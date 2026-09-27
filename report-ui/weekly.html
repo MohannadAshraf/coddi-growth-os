@@ -1,0 +1,995 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Coddiwomple — Weekly report</title>
+<link rel="stylesheet" href="/growth.css">
+<script>
+  try { if (localStorage.getItem("gs.theme") === "light") document.documentElement.setAttribute("data-theme", "light"); } catch (_) {}
+</script>
+</head>
+<body>
+<header class="gs-top">
+  <div class="gs-top-in">
+    <div class="gs-brand">
+      <span class="gs-brand-mark"></span>
+      <span class="gs-brand-name">Weekly report</span>
+      <span class="gs-brand-sub" id="contract"></span>
+    </div>
+    <div class="gs-controls">
+      <button class="gs-btn" id="prev" title="Previous week">‹</button>
+      <input id="week" type="date" step="7" aria-label="Week starting">
+      <button class="gs-btn" id="next" title="Next week">›</button>
+      <button class="gs-btn" id="theme" title="Light / dark">◐</button>
+      <button class="gs-btn" id="print" title="Print or save as PDF">print</button>
+      <a href="/growth" class="gs-btn" style="text-decoration:none">full dashboard</a>
+    </div>
+  </div>
+</header>
+<main class="gs-main" id="app"><div class="gs-note">Loading…</div></main>
+<div class="gs-lightbox" id="lightbox" hidden></div>
+<script src="/growth-envelope.js"></script>
+<script>
+(function () {
+  "use strict";
+  const API = "/api";
+  const G = window.GrowthEnvelope;
+  const { esc, dt, formatParts, isMissing } = G;
+  const app = document.getElementById("app");
+  const weekInput = document.getElementById("week");
+
+  const num = (e) => (e && !isMissing(e) ? e.value : null);
+  const val = (e, unit) => {
+    if (!e || isMissing(e)) return "—";
+    const f = formatParts(e.value, unit || e.unit);
+    return f.num + (f.suffix === "%" ? "%" : f.suffix ? " " + f.suffix : "");
+  };
+  const pct = (v, digits) => (v === null || v === undefined || !Number.isFinite(v) ? "—" : (v * 100).toFixed(digits === undefined ? 2 : digits) + "%");
+  const int = (v) => (v === null || v === undefined || !Number.isFinite(v) ? "—" : Math.round(v).toLocaleString("en-US"));
+
+  const head = (n, id, title, src) =>
+    '<div class="gs-h"><span class="gs-h-num">' + String(n).padStart(2, "0") + '</span><h2>' + esc(title) + '</h2><span class="gs-h-src">' + esc(src || "") + "</span></div>";
+  const sub = (t, n) => '<div class="gs-sub"><span class="gs-sub-t">' + esc(t) + "</span>" + (n ? '<span class="gs-sub-n">' + esc(n) + "</span>" : "") + "</div>";
+  const note = (t) => '<div class="gs-note">' + esc(t) + "</div>";
+  const lead = (t) => '<p class="gs-lead" style="--lead:var(--st-suspect)">' + esc(t) + "</p>";
+  const empty = (t) => '<div class="gs-list-empty">' + esc(t) + "</div>";
+  const metricsOf = (row) => Object.fromEntries((row.metrics || []).map((e) => [e.metric, e]));
+
+  // Sorting lives here so a table can be re-ordered without another round trip:
+  // every row is already on the page, and the team will want it ranked their way.
+  const sorts = { products: { key: "units", dir: -1 }, pages: { key: "sessions", dir: -1 }, ads: { key: "spend", dir: -1 } };
+
+  function sortRows(rows, state) {
+    const k = state.key;
+    return rows.slice().sort((a, b) => {
+      const x = a[k];
+      const y = b[k];
+      const xn = x === null || x === undefined || !Number.isFinite(x);
+      const yn = y === null || y === undefined || !Number.isFinite(y);
+      if (xn && yn) return String(a.sortLabel || "").localeCompare(String(b.sortLabel || ""));
+      if (xn) return 1;              // nothing measured sinks, whichever way the sort runs
+      if (yn) return -1;
+      if (x === y) return String(a.sortLabel || "").localeCompare(String(b.sortLabel || ""));
+      return (x < y ? -1 : 1) * state.dir;
+    });
+  }
+
+  // Rows opened to show what is underneath them, kept across a re-render so sorting
+  // or filtering does not close what you were reading.
+  const openRows = { products: new Set() };
+
+  // cols: { label, key?, unit?, right?, w?, fmt? } — a key makes the header clickable.
+  // detail: (row) => html for a full-width panel under the row, opened by clicking it.
+  function table(name, cols, rows, emptyText, detail) {
+    if (!rows.length) return empty(emptyText || "Nothing to show for this week.");
+    const state = sorts[name];
+    const ordered = state ? sortRows(rows, state) : rows;
+    const open = openRows[name] || null;
+    let h = '<div class="gs-table"><div class="gs-table-in" style="grid-template-columns:' + cols.map((c) => c.w || "minmax(0,1fr)").join(" ") + '">';
+    h += cols.map((c) => {
+      const active = state && c.key === state.key;
+      const arrow = active ? (state.dir === -1 ? " ↓" : " ↑") : "";
+      const inner = esc(c.label) + esc(arrow) + (c.unit ? '<br><span class="u">' + esc(c.unit) + "</span>" : "");
+      if (!c.key || !state) return '<div class="gs-th' + (c.right ? " r" : "") + '">' + inner + "</div>";
+      return '<div class="gs-th' + (c.right ? " r" : "") + (active ? " is-sorted" : "") + '" data-sort="' + esc(name) + '" data-key="' + esc(c.key) +
+        '" role="button" tabindex="0" title="Sort by ' + esc(c.label) + '">' + inner + "</div>";
+    }).join("");
+    for (const row of ordered) {
+      const id = String(row.id === undefined ? row.sortLabel : row.id);
+      const isOpen = !!(detail && open && open.has(id));
+      h += cols.map((c, i) => {
+        const raw = c.fmt ? c.fmt(row) : row[c.key];
+        const text = raw === null || raw === undefined || raw === "" ? "—" : String(raw);
+        const cls = i === 0 ? "gs-td gs-td-ent" : "gs-td" + (c.right ? " r" : "");
+        const opens = detail && i === 0
+          ? ' data-open="' + esc(name) + '" data-row="' + esc(id) + '" role="button" tabindex="0" title="' +
+            esc(text) + ' — click for the sizes"'
+          : (i === 0 ? ' title="' + esc(text) + '"' : "");
+        const mark = detail && i === 0 ? '<span class="gs-open-m">' + (isOpen ? "−" : "+") + "</span>" : "";
+        return '<div class="' + cls + (detail && i === 0 ? " gs-td-opens" : "") + '"' + opens + ">" + mark + esc(text) + "</div>";
+      }).join("");
+      if (isOpen) h += '<div class="gs-td-detail">' + detail(row) + "</div>";
+    }
+    return h + "</div></div>";
+  }
+
+  // A section that cannot be filled must say so. Returning nothing deleted the whole
+  // creative block from the drop week — Meta had no day past the 19th yet — and the
+  // report simply looked as though ads had never been built.
+  function sourceState(week, table, label) {
+    const src = (week.meta && week.meta.sources && week.meta.sources[table]) || null;
+    if (!src || !src.covered_to) return label + " has never been loaded. Press load data now on the dashboard.";
+    if (src.covered_to < week.week.start) {
+      return label + " is loaded to " + dt(src.covered_to) + ", and this week begins " + dt(week.week.start) +
+        " — there is nothing in it yet. Press load data now, or wait for tonight's run.";
+    }
+    if (src.covered_to < week.week.end) {
+      return label + " is loaded to " + dt(src.covered_to) + ", so the last day or two of this week is still to come.";
+    }
+    return "";
+  }
+
+  const stat = (label, value, under) =>
+    '<div class="gs-cell"><span class="gs-cell-k">' + esc(label) + '</span>' +
+    '<span class="gs-cell-v"><span class="n">' + esc(value) + "</span></span>" +
+    (under ? '<span class="gs-cell-note">' + esc(under) + "</span>" : "") + "</div>";
+
+  // ------------------------------------------------------------------ sitewide
+  function renderSite(d, n) {
+    const flat = Object.values(d.surfaces).flatMap((s) => Object.values(s.sections).flat());
+    const g = (k) => flat.find((e) => e.metric === k) || null;
+    const sessions = num(g("sessions_shopify"));
+    const cart = num(g("sessions_with_cart_add_shopify"));
+    const checkout = num(g("sessions_reached_checkout_shopify"));
+    const converted = num(g("sessions_converted_shopify"));
+
+    const money = [
+      stat("Orders", val(g("orders")), ""),
+      stat("Net sales", val(g("net_sales_attributed") || g("net_sales")), "after discounts and reversals"),
+      stat("AOV", val(g("aov")), "per order"),
+      stat("Ad spend", val(g("ad_spend")), "billed"),
+      stat("MER", val(g("blended_mer")), "net sales ÷ spend"),
+      stat("Contribution / order", val(g("contribution_per_order")), "after COGS, freight, COD fee, RTO, refunds")
+    ].join("");
+
+    const funnel = [
+      stat("Sessions", int(sessions), "Shopify"),
+      stat("Added to cart", int(cart), pct(sessions ? cart / sessions : null) + " of sessions"),
+      stat("Reached checkout", int(checkout), pct(sessions ? checkout / sessions : null) + " of sessions"),
+      stat("Bought", int(converted), pct(sessions ? converted / sessions : null) + " of sessions")
+    ].join("");
+
+    const quality = [
+      stat("RTO rate", val(g("reversal_rate")), "orders that came back undelivered"),
+      stat("Returns asked", val(g("return_request_rate_units")), "units asked back, by order week"),
+      stat("Refunds", val(g("refund_value")), "cash returned, either channel"),
+      stat("New customers", val(g("new_customer_share")), "share of orders"),
+      stat("Checkout completion", val(g("checkout_completion_rate_shopify")), "of those who reached checkout"),
+      stat("Purchase → delivered", val(g("purchase_to_delivered_rate")), "orders that arrived")
+    ].join("");
+
+    return '<section class="gs-section" id="site">' + head(n, "site", "The week, sitewide", "/growth/week") +
+      sub("Money") + '<div class="gs-cells">' + money + "</div>" +
+      sub("Funnel", "Shopify sessions basis — each step as a share of all sessions") + '<div class="gs-cells">' + funnel + "</div>" +
+      sub("Quality of the revenue") + '<div class="gs-cells">' + quality + "</div>" +
+      "</section>";
+  }
+
+  // ------------------------------------------------------------- landing pages
+  function pageRows(pages) {
+    if (!pages) return [];
+    return pages.rows.map((r) => {
+      const m = metricsOf(r);
+      const sessions = num(m.sessions_shopify);
+      const atc = num(m.atc_rate_shopify);
+      const checkout = num(m.checkout_rate_shopify);
+      const cvr = num(m.cvr_shopify);
+      return {
+        page: r.entity_id,
+        sortLabel: r.entity_id,
+        kind: /^\/products\//.test(String(r.entity_id)) ? "product" : "other",
+        sessions,
+        carts: sessions !== null && atc !== null ? sessions * atc : null,
+        checkouts: sessions !== null && checkout !== null ? sessions * checkout : null,
+        bought: sessions !== null && cvr !== null ? sessions * cvr : null,
+        // Each rate keeps its own denominator. A page whose rate is missing must not
+        // pour its sessions into another page's rate as if nobody there added to
+        // cart — that is how a product read far below the pages it is made of.
+        cartSessions: sessions !== null && atc !== null ? sessions : 0,
+        checkoutSessions: sessions !== null && checkout !== null ? sessions : 0,
+        boughtSessions: sessions !== null && cvr !== null ? sessions : 0,
+        atc,
+        cvr
+      };
+    }).filter((r) => r.sessions > 0);
+  }
+
+  const PAGE_COLS = [
+    { label: "landing page", key: "page", w: "minmax(0,2.1fr)", fmt: (r) => r.page },
+    { label: "sessions", key: "sessions", right: true, w: "minmax(0,.7fr)", fmt: (r) => int(r.sessions) },
+    { label: "carts", key: "carts", right: true, w: "minmax(0,.55fr)", fmt: (r) => int(r.carts) },
+    { label: "checkouts", key: "checkouts", right: true, w: "minmax(0,.65fr)", fmt: (r) => int(r.checkouts) },
+    { label: "bought", key: "bought", right: true, w: "minmax(0,.55fr)", fmt: (r) => int(r.bought) },
+    { label: "ATC", key: "atc", right: true, w: "minmax(0,.55fr)", fmt: (r) => pct(r.atc) },
+    { label: "CVR", key: "cvr", right: true, w: "minmax(0,.55fr)", fmt: (r) => pct(r.cvr) }
+  ];
+
+  function renderPages(n, rows, week) {
+    const lag = sourceState(week, "fact_session_daily", "Shopify sessions");
+    const all = rows.slice().sort((a, b) => b.sessions - a.sessions).slice(0, 15);
+    const products = rows.filter((r) => r.kind === "product").sort((a, b) => b.sessions - a.sessions).slice(0, 15);
+    return '<section class="gs-section" id="pages">' + head(n, "pages", "Where people landed", "shopify.landing_page") +
+      (lag ? lead(lag) : "") +
+      sub("Most visited pages", "the whole funnel for each · click a column to sort") +
+      table("pages", PAGE_COLS, all, "No session data for this week — press load data now on the dashboard.") +
+      sub("Most visited product pages", "the same, narrowed to product pages") +
+      table("pages", PAGE_COLS, products, "No product page was landed on this week.") +
+      note("A landing page is where the visit began, not everything the visitor saw. Carts, checkouts and purchases are the whole visit's outcome, credited to the page that started it.") +
+      "</section>";
+  }
+
+  // ------------------------------------------------------------------ products
+  function productRows(products, pages, variants) {
+    const visitsByHandle = new Map();
+    for (const r of (pages || [])) {
+      const match = /^\/products\/([^/?#]+)/.exec(String(r.page || ""));
+      if (!match) continue;
+      const cell = visitsByHandle.get(match[1]) || { sessions: 0, carts: 0, checkouts: 0, bought: 0, cartSessions: 0, checkoutSessions: 0, boughtSessions: 0 };
+      cell.sessions += r.sessions || 0;
+      cell.carts += r.carts || 0;
+      cell.checkouts += r.checkouts || 0;
+      cell.bought += r.bought || 0;
+      cell.cartSessions += r.cartSessions || 0;
+      cell.checkoutSessions += r.checkoutSessions || 0;
+      cell.boughtSessions += r.boughtSessions || 0;
+      visitsByHandle.set(match[1], cell);
+    }
+    const byProduct = new Map();
+    for (const r of (variants ? variants.rows : [])) {
+      const pid = r.attributes && r.attributes.product_id;
+      if (!pid) continue;
+      const m = metricsOf(r);
+      const cell = byProduct.get(pid) || { on_hand: 0, sizes: [] };
+      const stock = num(m.inventory_on_hand);
+      const units = num(m.units_total);
+      if (stock !== null) cell.on_hand += stock;
+      cell.sizes.push({ size: (r.attributes && r.attributes.size) || "—", stock, units });
+      byProduct.set(pid, cell);
+    }
+    return products.rows.map((r) => {
+      const m = metricsOf(r);
+      const a = r.attributes || {};
+      const visits = visitsByHandle.get(a.handle) || null;
+      const stock = byProduct.get(r.entity_id) || null;
+      const units = num(m.units_total);
+      const spend = num(m.ad_spend);
+      const sessions = visits ? visits.sessions : null;
+      return {
+        id: r.entity_id,
+        title: a.title || r.entity_id,
+        sortLabel: a.title || r.entity_id,
+        status: String(a.status || "").toUpperCase(),
+        units,
+        orders: num(m.orders_containing),
+        netSales: num(m.net_sales_attributed),
+        spend,
+        spendPerUnit: units && spend ? spend / units : null,
+        sessions,
+        carts: visits ? visits.carts : null,
+        checkouts: visits ? visits.checkouts : null,
+        atc: visits && visits.cartSessions ? visits.carts / visits.cartSessions : null,
+        checkoutRate: visits && visits.checkoutSessions ? visits.checkouts / visits.checkoutSessions : null,
+        cvr: visits && visits.boughtSessions ? visits.bought / visits.boughtSessions : null,
+        returnUnits: num(m.return_requests_units),
+        returnRate: num(m.return_request_rate_units),
+        exchangeUnits: num(m.exchange_requests_units),
+        // The total is the server's own figure over every variant of this product,
+        // at the locations that fulfil online orders. The variant rows are here for
+        // the size breakdown, not to be re-summed into a total the page might have
+        // only part of.
+        stock: num(m.inventory_on_hand),
+        sizes: stock ? stock.sizes : []
+      };
+    })
+      // Only products that are live and did something this week. A draft with stock
+      // sitting in a warehouse is not a line in a weekly review.
+      .filter((r) => r.status === "ACTIVE")
+      .filter((r) => (r.units || 0) > 0 || (r.spend || 0) > 0 || (r.sessions || 0) > 0);
+  }
+
+  const PRODUCT_COLS = [
+    { label: "product", key: "title", w: "minmax(0,1.8fr)", fmt: (r) => r.title },
+    { label: "sessions", unit: "own page", key: "sessions", right: true, w: "minmax(0,.62fr)", fmt: (r) => int(r.sessions) },
+    { label: "carts", key: "carts", right: true, w: "minmax(0,.45fr)", fmt: (r) => int(r.carts) },
+    { label: "ATC", key: "atc", right: true, w: "minmax(0,.5fr)", fmt: (r) => pct(r.atc, 1) },
+    { label: "checkout", key: "checkoutRate", right: true, w: "minmax(0,.55fr)", fmt: (r) => pct(r.checkoutRate, 1) },
+    { label: "CVR", key: "cvr", right: true, w: "minmax(0,.5fr)", fmt: (r) => pct(r.cvr, 1) },
+    { label: "orders", key: "orders", right: true, w: "minmax(0,.5fr)", fmt: (r) => int(r.orders) },
+    { label: "units", key: "units", right: true, w: "minmax(0,.45fr)", fmt: (r) => int(r.units) },
+    { label: "net sales", key: "netSales", right: true, w: "minmax(0,.7fr)", fmt: (r) => int(r.netSales) },
+    { label: "ad spend", key: "spend", right: true, w: "minmax(0,.62fr)", fmt: (r) => int(r.spend) },
+    { label: "per unit", key: "spendPerUnit", right: true, w: "minmax(0,.55fr)", fmt: (r) => int(r.spendPerUnit) },
+    { label: "returns", unit: "units", key: "returnUnits", right: true, w: "minmax(0,.5fr)", fmt: (r) => int(r.returnUnits) },
+    { label: "of units", key: "returnRate", right: true, w: "minmax(0,.5fr)", fmt: (r) => pct(r.returnRate, 1) },
+    { label: "stock", key: "stock", right: true, w: "minmax(0,.5fr)", fmt: (r) => int(r.stock) }
+  ];
+
+  // Every size of one product: what was ordered this week and what is left on the
+  // shelf. It belongs under the product, next to that product's funnel, not in a
+  // section of its own further down the page.
+  function productSizes(r) {
+    if (!r.sizes || !r.sizes.length) {
+      return '<div class="gs-sizes"><span class="gs-sizes-none">No variant is in the latest stock snapshot for this product.</span></div>';
+    }
+    const sizes = r.sizes.slice().sort((a, b) => (b.units || 0) - (a.units || 0) || (b.stock || 0) - (a.stock || 0));
+    const cell = (x) => {
+      const tone = x.stock === null ? "flat" : x.stock === 0 ? "bad" : x.stock <= 3 ? "warn" : "good";
+      return '<div class="gs-size"><span class="gs-size-n">' + esc(x.size) + "</span>" +
+        '<span class="gs-size-v">' + esc(int(x.units)) + " sold</span>" +
+        '<span class="gs-size-s gs-ad-' + tone + '">' + (x.stock === null ? "—" : esc(int(x.stock)) + " left") + "</span></div>";
+    };
+    const out = sizes.reduce((t, x) => t + (x.stock || 0), 0);
+    const gone = sizes.filter((x) => x.stock === 0).map((x) => x.size);
+    return '<div class="gs-sizes">' + sizes.map(cell).join("") + "</div>" +
+      '<div class="gs-sizes-note">' + esc(
+        (gone.length ? "Sold out in " + gone.join(", ") + ". " : "") +
+        int(out) + " units left across " + sizes.length + " sizes, at the latest nightly snapshot, online locations only."
+      ) + "</div>";
+  }
+
+  function renderProducts(n, rows, week) {
+    const lag = sourceState(week, "fact_order", "Orders");
+    const starved = rows.filter((r) => (r.units || 0) >= 5 && !(r.spend > 0)).sort((a, b) => b.units - a.units).slice(0, 8);
+    const dear = rows.filter((r) => r.spendPerUnit !== null && r.units >= 3).sort((a, b) => b.spendPerUnit - a.spendPerUnit).slice(0, 8);
+    const low = rows.filter((r) => r.stock !== null && r.units >= 3 && r.stock <= r.units).sort((a, b) => a.stock - b.stock).slice(0, 8);
+
+    const list = (title, why, items, fmt) =>
+      '<div class="gs-panel"><div class="gs-panel-h"><span class="gs-panel-t">' + esc(title) + '</span><span class="gs-panel-s">' + esc(why) + "</span></div>" +
+      (items.length
+        ? items.map((r) => '<div class="gs-list-r"><span class="gs-list-t">' + esc(r.title) + '</span><span class="gs-list-v">' + esc(fmt(r)) + "</span></div>").join("")
+        : empty("Nothing qualifies this week.")) + "</div>";
+
+    return '<section class="gs-section" id="products">' + head(n, "products", "Products", "/growth/entity?entity=product") +
+      (lag ? lead(lag) : "") +
+      sub("Active products with activity this week", "click a column to sort · the funnel counts visits that began on the product's own page") +
+      table("products", PRODUCT_COLS, rows, "No product sold or was advertised this week.", productSizes) +
+      sub("Worth a decision") +
+      '<div class="gs-cols">' +
+        list("Selling without support", "units with no ad spend behind them", starved, (r) => int(r.units) + " units, no spend") +
+        list("Dearest to sell", "ad spend per unit sold", dear, (r) => int(r.spendPerUnit) + " per unit") +
+        list("Stock under a week", "on hand at or below last week's units", low, (r) => int(r.stock) + " left, sold " + int(r.units)) +
+      "</div>" +
+      note("A product's funnel counts visits that landed on its own page. Someone who arrived on a collection and bought from there counts sitewide but not against the product, so these rates are a floor, not a total. Returns are units asked back against units sold, by the week the order was placed.") +
+      "</section>";
+  }
+
+
+  // ------------------------------------------------------------------ the answers
+  // Four questions the team asks every week, answered by name, with the evidence
+  // that makes each answer true. Nothing here is a new measurement: every number
+  // is one already on the page, so an answer can always be checked against the
+  // table under it. When the evidence is not there, the answer says so instead of
+  // picking a winner out of noise.
+  const median = (xs) => {
+    const v = xs.filter((x) => x !== null && x !== undefined && Number.isFinite(x)).sort((a, b) => a - b);
+    if (!v.length) return null;
+    const i = Math.floor(v.length / 2);
+    return v.length % 2 ? v[i] : (v[i - 1] + v[i]) / 2;
+  };
+  const times = (a, b) => (a && b ? (a / b).toFixed(1) + "\u00d7 " : "");
+
+  function answerCard(question, name, headline, why, tone) {
+    return '<div class="gs-answer"><div class="gs-answer-q">' + esc(question) + "</div>" +
+      (name
+        ? '<div class="gs-answer-a gs-ad-' + (tone || "good") + '">' + esc(name) + "</div>" +
+          '<div class="gs-answer-h">' + esc(headline) + "</div>" +
+          '<ul class="gs-answer-w">' + why.map((w) => "<li>" + esc(w) + "</li>").join("") + "</ul>"
+        : '<div class="gs-answer-a gs-ad-flat">Not answerable this week</div>' +
+          '<ul class="gs-answer-w">' + why.map((w) => "<li>" + esc(w) + "</li>").join("") + "</ul>") +
+      "</div>";
+  }
+
+  function renderAnswers(n, ads, products, pages, week) {
+    const spent = ads.filter((r) => (r.spend || 0) > 0);
+    const cards = [];
+
+    // ---- which creative is best clicked, and did the clicks go anywhere
+    const withCtr = spent.filter((r) => r.ctr !== null);
+    const medCtr = median(withCtr.map((r) => r.ctr));
+    const bestCtr = withCtr.slice().sort((a, b) => b.ctr - a.ctr)[0] || null;
+    if (bestCtr) {
+      const why = [
+        "CTR " + pct(bestCtr.ctr, 2) + " against a median of " + pct(medCtr, 2) + " across the " + withCtr.length + " ads that delivered — " + times(bestCtr.ctr, medCtr) + "the middle of the pack.",
+        "It cost " + int(bestCtr.cpm) + " per thousand shows and " + int(bestCtr.cpc) + " a click" +
+          (bestCtr.cpm !== null && medCtr !== null ? ", against a median CPM of " + int(median(withCtr.map((r) => r.cpm))) + "." : ".")
+      ];
+      // A high CTR that buys nothing is a hook problem dressed as a win.
+      if (bestCtr.purchases !== null && bestCtr.purchases === 0 && (bestCtr.attOrders || 0) === 0) {
+        why.push("It bought nothing: no purchase on Meta's count and no order of ours carries its id. The click is working and what follows it is not.");
+      } else if (bestCtr.attOrders !== null && bestCtr.attOrders > 0) {
+        why.push(int(bestCtr.attOrders) + " of our own orders carry its id, worth " + int(bestCtr.attSales) + " net.");
+      }
+      if (bestCtr.product) why.push("It is selling " + bestCtr.product + (bestCtr.productStock === 0 ? ", which is out of stock." : bestCtr.productStock !== null ? ", with " + int(bestCtr.productStock) + " left." : "."));
+      cards.push(answerCard("Which creative is best clicked?", bestCtr.name, "CTR " + pct(bestCtr.ctr, 2), why));
+    } else {
+      cards.push(answerCard("Which creative is best clicked?", null, "", [sourceState(week, "fact_ad_daily", "Meta ad data") || "No ad delivered in this week."]));
+    }
+
+    // ---- which creative brought the most money that is ours, not Meta's
+    const withMoney = spent.filter((r) => r.attSales !== null && r.attSales > 0);
+    const bestValue = withMoney.slice().sort((a, b) => b.attSales - a.attSales)[0] || null;
+    if (bestValue) {
+      const why = [
+        int(bestValue.attSales) + " EGP of our own net sales, from " + int(bestValue.attOrders) + " orders that arrived carrying its id, on " + int(bestValue.spend) + " spent.",
+        "Net ROAS " + ratio(bestValue.netRoas) + (bestValue.deliveredRoas !== null ? ", delivered ROAS " + ratio(bestValue.deliveredRoas) + " once the courier is counted." : ". Delivery is not resolved yet, so there is no delivered figure."),
+        "Meta claims " + ratio(bestValue.roas) + " on the same spend, counted at checkout. The gap between the two is cancellations and undelivered orders, not a disagreement about the ad."
+      ];
+      why.push("This is a floor: only orders that arrived carrying an ad id can be counted at all.");
+      cards.push(answerCard("Which creative brought the most money?", bestValue.name, int(bestValue.attSales) + " EGP net, ours", why));
+    } else {
+      const anyMeta = spent.filter((r) => r.revenue !== null && r.revenue > 0).sort((a, b) => b.revenue - a.revenue)[0] || null;
+      cards.push(answerCard("Which creative brought the most money?", anyMeta ? anyMeta.name : null,
+        anyMeta ? int(anyMeta.revenue) + " EGP, Meta's count" : "",
+        anyMeta
+          ? ["No order this week carries an ad id, so our own money cannot be put against a creative. This is Meta's own count at checkout: " +
+             int(anyMeta.revenue) + " EGP on " + int(anyMeta.spend) + " spent, ROAS " + ratio(anyMeta.roas) + ".",
+             "Until the links carry utm_content, treat it as directional."]
+          : ["No ad has any revenue against it this week, on either count."], "flat"));
+    }
+
+    // ---- which ad is actually performing, end to end
+    // An ad has to have been read at every stage to be called best: enough clicks to
+    // read a CTR and enough orders to read the money. Ranked on our money, not Meta's.
+    const judged = spent.filter((r) => r.ctr !== null && (r.attOrders || 0) >= 2 && r.netRoas !== null);
+    const best = judged.slice().sort((a, b) => b.netRoas - a.netRoas || b.attSales - a.attSales)[0] || null;
+    if (best) {
+      const medCpc = median(spent.map((r) => r.cpc));
+      const why = [
+        "Net ROAS " + ratio(best.netRoas) + " on " + int(best.spend) + " spent: the best of the " + judged.length + " ads with enough orders to read one.",
+        "Its chain: CPM " + int(best.cpm) + ", CTR " + pct(best.ctr, 2) + " (median " + pct(medCtr, 2) + "), CPC " + int(best.cpc) + " (median " + int(medCpc) + "), " + int(best.attOrders) + " orders of ours.",
+        best.deliveredRoas !== null
+          ? "Delivered ROAS " + ratio(best.deliveredRoas) + " — what survived the courier."
+          : "Delivery for its orders is not resolved yet, so only booked money can be read."
+      ];
+      if (best.product) why.push("Selling " + best.product + (best.productStock === 0 ? " — which is out of stock, so this is the first thing to fix." : best.productStock !== null ? ", " + int(best.productStock) + " left." : "."));
+      cards.push(answerCard("Which ad is performing best?", best.name, "net ROAS " + ratio(best.netRoas), why));
+    } else {
+      cards.push(answerCard("Which ad is performing best?", null, "", [
+        "No ad has both a readable click rate and at least two of our own orders behind it this week" +
+          (spent.length ? " — " + spent.length + " ads delivered, but the orders cannot be tied back to them." : "."),
+        "Ranking on Meta's purchase count instead would rank ads on a number that counts orders which are never delivered."
+      ], "flat"));
+    }
+
+    // ---- which product is selling, and what is doing the selling
+    const sellers = products.filter((r) => (r.units || 0) > 0).sort((a, b) => b.units - a.units);
+    const top = sellers[0] || null;
+    if (top) {
+      const siteCvr = (() => {
+        const t = pages.reduce((acc, r) => ({ s: acc.s + (r.boughtSessions || 0), b: acc.b + (r.bought || 0) }), { s: 0, b: 0 });
+        return t.s ? t.b / t.s : null;
+      })();
+      const why = [
+        int(top.units) + " units across " + int(top.orders) + " orders, worth " + int(top.netSales) + " EGP net" +
+          (sellers[1] ? " — ahead of " + sellers[1].title + " on " + int(sellers[1].units) + "." : "."),
+        top.sessions
+          ? "Its own page took " + int(top.sessions) + " sessions and converted " + pct(top.cvr, 1) +
+            (siteCvr !== null ? " against " + pct(siteCvr, 1) + " sitewide." : ".")
+          : "No sessions are recorded against its own page this week, so the selling did not happen on the product page.",
+        top.spend
+          ? int(top.spend) + " EGP of ad spend sits behind it, " + int(top.spendPerUnit) + " a unit."
+          : "No ad spend sits behind it at all: this is demand, not paid."
+      ];
+      if (top.stock !== null) {
+        why.push(top.stock === 0
+          ? "It is out of stock. Every session it takes from here is wasted."
+          : top.stock <= top.units
+            ? "Only " + int(top.stock) + " left against " + int(top.units) + " sold this week: under a week of cover."
+            : int(top.stock) + " left, about " + (top.units ? (top.stock / top.units).toFixed(1) : "?") + " weeks of cover at this rate.");
+      }
+      if (top.returnRate !== null && top.returnRate > 0) why.push(pct(top.returnRate, 1) + " of its units have been asked back.");
+      cards.push(answerCard("Which product is selling most?", top.title, int(top.units) + " units", why));
+    } else {
+      cards.push(answerCard("Which product is selling most?", null, "", [sourceState(week, "fact_order", "Orders") || "No product sold this week."]));
+    }
+
+    return '<section class="gs-section" id="answers">' + head(n, "answers", "The answers", "every number below is on this page") +
+      sub("What to say in the meeting", "each answer carries the evidence that makes it true") +
+      '<div class="gs-answers">' + cards.join("") + "</div>" +
+      "</section>";
+  }
+
+  // ----------------------------------------------------------------- creatives
+  // Every product in the catalogue, with the stock behind it — not only the ones
+  // that make the products table. An ad can point at a product that sold nothing
+  // this week, and "what is it selling, and is there any left" is the whole
+  // question when you are looking at a creative.
+  function catalogue(productsRes, variantsRes) {
+    const stock = new Map();
+    for (const r of (variantsRes ? variantsRes.rows : [])) {
+      const pid = r.attributes && r.attributes.product_id;
+      if (!pid) continue;
+      const on = num(metricsOf(r).inventory_on_hand);
+      if (on === null) continue;
+      stock.set(pid, (stock.get(pid) || 0) + on);
+    }
+    const out = new Map();
+    for (const r of (productsRes ? productsRes.rows : [])) {
+      const a = r.attributes || {};
+      out.set(r.entity_id, {
+        title: a.title || r.entity_id,
+        status: String(a.status || "").toUpperCase(),
+        stock: stock.has(r.entity_id) ? stock.get(r.entity_id) : num(metricsOf(r).inventory_on_hand),
+        units: num(metricsOf(r).units_total)
+      });
+    }
+    return out;
+  }
+
+  function adRows(ads, cat) {
+    if (!ads) return [];
+    return ads.rows.map((r) => {
+      const m = metricsOf(r);
+      const a = r.attributes || {};
+      const product = cat.get(a.promoted_product_id) || null;
+      return {
+        id: r.entity_id,
+        name: a.ad_name || r.entity_id,
+        sortLabel: a.ad_name || r.entity_id,
+        campaign: a.campaign_name || "(unnamed campaign)",
+        adset: a.adset_name || "",
+        productId: a.promoted_product_id || "",
+        product: product ? product.title : "",
+        productStock: product ? product.stock : null,
+        productUnits: product ? product.units : null,
+        format: a.format_shown || "",
+        shot: a.shot_shown || "",
+        thumb: a.thumbnail_url || "",
+        image: a.creative_image_url || "",
+        kind: a.creative_kind || "",
+        spend: num(m.ad_spend),
+        cpm: num(m.cpm),
+        ctr: num(m.outbound_ctr),
+        cpc: num(m.cpc_outbound),
+        lpv: num(m.landing_page_views),
+        purchases: num(m.platform_purchases),
+        roas: num(m.platform_roas),
+        atc: num(m.platform_atc),
+        revenue: num(m.platform_revenue),
+        attOrders: num(m.attributed_orders),
+        attSales: num(m.attributed_net_sales),
+        netRoas: num(m.net_roas_attributed),
+        deliveredRoas: num(m.delivered_roas_attributed)
+      };
+    }).filter((r) => (r.spend || 0) > 0);
+  }
+
+  // What is working and what is not, against these ads own quartiles. An ad is only
+  // judged on a stage that has the evidence to be read, so "too early" is its own
+  // answer rather than a quiet pass.
+  function creativeVerdicts(rows, baselines) {
+    const b = baselines || {};
+    const side = (key, value, good) => {
+      const line = b[key];
+      if (!line || value === null || value === undefined) return null;
+      if (good) return line.direction === "lower_better" ? value <= line.p25 : value >= line.p75;
+      return line.direction === "lower_better" ? value > line.p75 : value < line.p25;
+    };
+    const working = [];
+    const failing = [];
+    const early = [];
+    for (const r of rows) {
+      const reasons = [];
+      const problems = [];
+      if (side("cpm", r.cpm, true)) reasons.push("cheap to show");
+      if (side("outbound_ctr", r.ctr, true)) reasons.push("well clicked");
+      if (side("cpc_outbound", r.cpc, true)) reasons.push("cheap clicks");
+      if (side("cpm", r.cpm, false)) problems.push("dear to show");
+      if (side("outbound_ctr", r.ctr, false)) problems.push("ignored");
+      if (side("cpc_outbound", r.cpc, false)) problems.push("dear clicks");
+      if (r.purchases !== null && r.purchases < 5 && (r.spend || 0) > 0 && !problems.length && !reasons.length) {
+        early.push({ row: r, why: "only " + int(r.purchases) + " purchase(s) so far" });
+        continue;
+      }
+      if (problems.length) failing.push({ row: r, why: problems.join(", ") });
+      else if (reasons.length) working.push({ row: r, why: reasons.join(", ") });
+    }
+    const panel = (title, why, items, tone) =>
+      '<div class="gs-panel"><div class="gs-panel-h"><span class="gs-panel-t">' + esc(title) + '</span><span class="gs-panel-s">' + esc(why) + "</span></div>" +
+      (items.length
+        ? items.slice(0, 8).map((x) => '<div class="gs-list-r"><span class="gs-list-t">' + esc(x.row.name) + '</span><span class="gs-list-v gs-ad-' + tone + '">' +
+            esc(int(x.row.spend) + " \u00b7 " + x.why) + "</span></div>").join("")
+        : empty("Nothing qualifies yet.")) + "</div>";
+
+    const bySpend = (a, c) => (c.row.spend || 0) - (a.row.spend || 0);
+    // The same judgement, reachable one ad at a time, so a card can carry it.
+    lastVerdicts = new Map();
+    for (const [list, word, tone] of [[working, "working", "good"], [failing, "not working", "bad"], [early, "too early", "flat"]]) {
+      for (const x of list) lastVerdicts.set(x.row.id, { word, tone, why: x.why });
+    }
+    return '<div class="gs-cols">' +
+      panel("Working", "top quartile on a stage, none in the worst", working.sort(bySpend), "good") +
+      panel("Not working", "worst quartile on a stage that costs money", failing.sort(bySpend), "bad") +
+      panel("Too early", "spending, but not enough has happened to judge", early.sort(bySpend), "flat") +
+      "</div>";
+  }
+
+  const AD_COLS = [
+    { label: "ad", key: "name", w: "minmax(0,1.7fr)", fmt: (r) => r.name },
+    { label: "campaign", key: "campaign", w: "minmax(0,1.1fr)", fmt: (r) => r.campaign },
+    { label: "product", key: "product", w: "minmax(0,1.1fr)", fmt: (r) => r.product },
+    { label: "format", key: "format", w: "minmax(0,.6fr)", fmt: (r) => r.format },
+    { label: "spend", key: "spend", right: true, w: "minmax(0,.65fr)", fmt: (r) => int(r.spend) },
+    { label: "CPM", key: "cpm", right: true, w: "minmax(0,.5fr)", fmt: (r) => int(r.cpm) },
+    { label: "CTR", key: "ctr", right: true, w: "minmax(0,.5fr)", fmt: (r) => pct(r.ctr) },
+    { label: "CPC", key: "cpc", right: true, w: "minmax(0,.5fr)", fmt: (r) => int(r.cpc) },
+    { label: "landed", unit: "Meta", key: "lpv", right: true, w: "minmax(0,.55fr)", fmt: (r) => int(r.lpv) },
+    { label: "purch", unit: "Meta", key: "purchases", right: true, w: "minmax(0,.5fr)", fmt: (r) => int(r.purchases) },
+    { label: "ROAS", unit: "Meta, raw", key: "roas", right: true, w: "minmax(0,.55fr)", fmt: (r) => ratio(r.roas) },
+    { label: "orders", unit: "ours", key: "attOrders", right: true, w: "minmax(0,.55fr)", fmt: (r) => int(r.attOrders) },
+    { label: "ROAS", unit: "net", key: "netRoas", right: true, w: "minmax(0,.55fr)", fmt: (r) => ratio(r.netRoas) },
+    { label: "ROAS", unit: "delivered", key: "deliveredRoas", right: true, w: "minmax(0,.6fr)", fmt: (r) => ratio(r.deliveredRoas) }
+  ];
+
+  const ratio = (v) => (v === null || v === undefined ? "—" : v.toFixed(2));
+
+  // The gallery is sorted by whatever you are actually asking of the ads this week.
+  const AD_SORTS = [
+    ["spend", "spend", -1], ["ctr", "CTR", -1], ["cpm", "CPM", 1], ["cpc", "CPC", 1],
+    ["lpv", "landing page views", -1], ["purchases", "Meta purchases", -1], ["roas", "Meta ROAS (raw)", -1],
+    ["attOrders", "our orders", -1], ["attSales", "our net sales", -1],
+    ["netRoas", "net ROAS", -1], ["deliveredRoas", "delivered ROAS", -1]
+  ];
+  let gallerySort = "spend";
+
+  let campaignFilter = "";
+  let lastVerdicts = new Map();
+
+  // Which product is this ad selling? Every product in the catalogue, so an ad for
+  // something that has not sold this week can still be tagged.
+  function productPicker(adId) {
+    const list = [...(state.catalogue || new Map()).entries()]
+      .sort((a, b) => String(a[1].title).localeCompare(String(b[1].title)));
+    if (!list.length) return "";
+    return '<div class="gs-cre-pick"><select data-ad="' + esc(adId) + '" aria-label="connect a product">' +
+      '<option value="">connect a product…</option>' +
+      list.map(([id, p]) => '<option value="' + esc(id) + '">' + esc(p.title) +
+        (p.status === "ACTIVE" ? "" : " (" + esc(p.status.toLowerCase()) + ")") + "</option>").join("") +
+      "</select></div>";
+  }
+
+  // The creatives themselves. A name is not a creative: judging "Flatlay vs Model"
+  // off a string is guessing, and the product it points at — and whether there is
+  // any of it left — is the other half of the decision.
+  function creativeGallery(rows, verdictOf) {
+    if (!rows.length) return empty("No creative delivered in this selection.");
+    const money = (v) => (v === null ? "—" : int(v));
+    const card = (r) => {
+      const v = verdictOf(r);
+      const stock = r.productStock;
+      const stockWord = stock === null ? "stock unknown"
+        : stock === 0 ? "out of stock"
+        : stock + " in stock";
+      const stockTone = stock === null ? "flat" : stock === 0 ? "bad" : stock <= 10 ? "warn" : "good";
+      // The image comes from Meta's CDN and its link can expire; when it does not
+      // load the card keeps its place and says so rather than showing a hole.
+      // Click opens the full asset. Meta's thumbnail is a preview; the creative is
+      // the thing being judged, so it has to be lookable-at.
+      const shot = r.thumb
+        ? '<img class="gs-cre-img" src="' + esc(r.thumb) + '" alt="' + esc(r.name) + '" loading="lazy" ' +
+          'data-full="' + esc(r.image || r.thumb) + '" data-ad="' + esc(r.id) + '" role="button" tabindex="0" title="Open this creative" ' +
+          "onerror=\"this.classList.add('gs-cre-broken');this.removeAttribute('src');\">"
+        : '<div class="gs-cre-img gs-cre-none">no image from Meta yet</div>';
+      const stat = (label, value) => '<div class="gs-cre-s"><span>' + esc(label) + "</span><b>" + value + "</b></div>";
+      return '<figure class="gs-cre">' + shot +
+        '<figcaption class="gs-cre-body">' +
+          '<div class="gs-cre-h"><span class="gs-cre-n">' + esc(r.name) + "</span>" +
+          (v ? '<span class="gs-chip gs-ad-' + v.tone + '">' + esc(v.word) + "</span>" : "") + "</div>" +
+          '<div class="gs-cre-m">' + esc([r.campaign, r.format, r.kind].filter(Boolean).join(" · ")) + "</div>" +
+          '<div class="gs-cre-p">' + (r.product
+            ? esc(r.product) + ' <span class="gs-ad-' + stockTone + '">' + esc(stockWord) + "</span>"
+            // The name-matcher reads most ad names; the ones it cannot are tagged by
+            // hand here, once, and the tag outlives every later Meta refresh.
+            : '<span class="gs-cre-nop">no product read from the name</span>' + productPicker(r.id)) + "</div>" +
+          '<div class="gs-cre-stats">' +
+            stat("spend", money(r.spend)) +
+            stat("CPM", money(r.cpm)) +
+            stat("CTR", pct(r.ctr, 2)) +
+            stat("CPC", money(r.cpc)) +
+            stat("landed", money(r.lpv)) +
+            stat("purchases", r.purchases === null ? "—" : int(r.purchases)) +
+            stat("ROAS raw", ratio(r.roas)) +
+            stat("our orders", r.attOrders === null ? "—" : int(r.attOrders)) +
+            stat("ROAS net", ratio(r.netRoas)) +
+            stat("ROAS delivered", ratio(r.deliveredRoas)) +
+          "</div>" +
+        "</figcaption></figure>";
+    };
+    return '<div class="gs-cre-grid">' + rows.slice(0, 24).map(card).join("") + "</div>";
+  }
+
+  function renderCreatives(n, ads, formats, shots, products, baselines, week) {
+    const header = '<section class="gs-section" id="creatives">' + head(n, "creatives", "Creative", "/growth/entity?entity=ad");
+    if (!ads.length) {
+      return header + lead(sourceState(week, "fact_ad_daily", "Meta ad data") || "No ad spent in this week.") +
+        empty("Nothing to judge yet: no ad delivered in this window.") + "</section>";
+    }
+    const campaigns = [...new Set(ads.map((r) => r.campaign))].sort();
+    const shown = campaignFilter ? ads.filter((r) => r.campaign === campaignFilter) : ads;
+    const picker = '<div class="gs-picker"><label for="campaign-pick">campaign</label>' +
+      '<select id="campaign-pick"><option value="">all campaigns (' + ads.length + ' ads)</option>' +
+      campaigns.map((c) => '<option value="' + esc(c) + '"' + (c === campaignFilter ? " selected" : "") + ">" + esc(c) +
+        " (" + ads.filter((r) => r.campaign === c).length + ")</option>").join("") + "</select>" +
+      (campaignFilter ? '<span class="gs-picker-n">' + esc(int(shown.reduce((t, r) => t + (r.spend || 0), 0))) + " spent here</span>" : "") +
+      "</div>";
+    const rollup = (res, label) => {
+      if (!res) return "";
+      const list = res.rows.map((r) => {
+        const m = metricsOf(r);
+        return { id: r.entity_id, sortLabel: r.entity_id, ads: (r.attributes && r.attributes.ads) || null, spend: num(m.ad_spend), cpm: num(m.cpm), ctr: num(m.outbound_ctr), roas: num(m.platform_roas) };
+      }).filter((r) => (r.spend || 0) > 0).sort((a, b) => b.spend - a.spend).slice(0, 8);
+      return table(null, [
+        { label: label, w: "minmax(0,1.2fr)", fmt: (r) => r.id },
+        { label: "ads", right: true, w: "minmax(0,.4fr)", fmt: (r) => (r.ads === null ? "—" : r.ads) },
+        { label: "spend", right: true, w: "minmax(0,.7fr)", fmt: (r) => int(r.spend) },
+        { label: "CPM", right: true, w: "minmax(0,.5fr)", fmt: (r) => int(r.cpm) },
+        { label: "CTR", right: true, w: "minmax(0,.5fr)", fmt: (r) => pct(r.ctr) },
+        { label: "ROAS", right: true, w: "minmax(0,.5fr)", fmt: (r) => (r.roas === null ? "—" : r.roas.toFixed(1)) }
+      ], list);
+    };
+
+    const unitsByTitle = new Map(products.map((p) => [p.title, p.units]));
+    const byProduct = new Map();
+    for (const r of shown) {
+      if (!r.product) continue;
+      const cell = byProduct.get(r.product) || { ads: 0, spend: 0, purchases: 0 };
+      cell.ads += 1;
+      cell.spend += r.spend || 0;
+      cell.purchases += r.purchases || 0;
+      byProduct.set(r.product, cell);
+    }
+    const tie = [...byProduct.entries()].map(([title, c]) => ({
+      title, sortLabel: title, ads: c.ads, spend: c.spend, purchases: c.purchases,
+      units: unitsByTitle.get(title) === undefined ? null : unitsByTitle.get(title),
+      perUnit: unitsByTitle.get(title) ? c.spend / unitsByTitle.get(title) : null
+    })).sort((a, b) => b.spend - a.spend);
+
+    const lag = sourceState(week, "fact_ad_daily", "Meta ad data");
+    return header + (lag ? lead(lag) : "") +
+      picker +
+      sub("What is working, and what is not", "judged against the quartiles of the ads in view" + (campaignFilter ? " \u2014 " + campaignFilter : "")) +
+      creativeVerdicts(shown, baselines) +
+      sub("The creatives themselves", "click one to see it full size — what it sells, and whether there is any left") +
+      '<div class="gs-picker"><label for="ad-sort">sort by</label><select id="ad-sort">' +
+        AD_SORTS.map((x) => '<option value="' + x[0] + '"' + (x[0] === gallerySort ? " selected" : "") + ">" + esc(x[1]) + "</option>").join("") +
+        "</select></div>" +
+      creativeGallery(sortRows(shown, { key: gallerySort, dir: (AD_SORTS.find((x) => x[0] === gallerySort) || [])[2] || -1 }),
+        (r) => lastVerdicts.get(r.id) || null) +
+      sub("Every ad that spent", "click a column to sort") +
+      table("ads", AD_COLS, shown, "No ad delivered in this selection.") +
+      sub("By format and by shot", "read off the ad names") +
+      '<div class="gs-cols"><div>' + rollup(formats, "format") + "</div><div>" + rollup(shots, "shot") + "</div></div>" +
+      sub("Creative against the product it sells", "an ad that names no product is not counted here") +
+      table(null, [
+        { label: "product", w: "minmax(0,2fr)", fmt: (r) => r.title },
+        { label: "ads", right: true, w: "minmax(0,.4fr)", fmt: (r) => r.ads },
+        { label: "spend", right: true, w: "minmax(0,.7fr)", fmt: (r) => int(r.spend) },
+        { label: "Meta purchases", right: true, w: "minmax(0,.8fr)", fmt: (r) => int(r.purchases) },
+        { label: "units sold", unit: "Shopify", right: true, w: "minmax(0,.7fr)", fmt: (r) => int(r.units) },
+        { label: "spend per unit", right: true, w: "minmax(0,.8fr)", fmt: (r) => int(r.perUnit) }
+      ], tie, "No ad is linked to a product yet.") +
+      note("Purchases and ROAS here are Meta's own count at checkout. In a COD business that includes orders that are never delivered, so read them beside the units column rather than instead of it.") +
+      "</section>";
+  }
+
+  // ---------------------------------------------------------------------- page
+  async function getJson(path, params) {
+    const url = new URL(API + path, location.origin);
+    for (const [k, v] of Object.entries(params || {})) if (v) url.searchParams.set(k, v);
+    const r = await fetch(url, { headers: { Accept: "application/json" }, credentials: "include" });
+    const j = await r.json().catch(() => null);
+    if (!r.ok || !j || !j.ok) throw new Error((j && ((j.error_code ? j.error_code + ": " : "") + j.error)) || "HTTP " + r.status + " on " + path);
+    return j;
+  }
+
+  const weekFromHash = () => {
+    const m = /week=(\d{4}-\d{2}-\d{2})/.exec(location.hash);
+    return m ? m[1] : "";
+  };
+  function shift(days) {
+    const d = new Date((weekInput.value || new Date().toISOString().slice(0, 10)) + "T00:00:00Z");
+    d.setUTCDate(d.getUTCDate() + days);
+    location.hash = "week=" + d.toISOString().slice(0, 10);
+  }
+
+  // A week that begins on a drop day is the drop so far, and should say so: that is
+  // the window anyone presenting "how is the drop doing" actually means.
+  function dropLine(week) {
+    const drop = week.drop_context && week.drop_context.drop;
+    if (!drop || drop.drop_date !== week.week.start) return "";
+    const days = Math.round((Date.parse(week.week.as_of + "T00:00:00Z") - Date.parse(drop.drop_date + "T00:00:00Z")) / 86400000) + 1;
+    return '<div><span>drop</span><span class="v">' + esc(drop.label || drop.drop_id) + " · day " + days + "</span></div>";
+  }
+
+  let state = null;
+
+  function render() {
+    if (!state) return;
+    let i = 0;
+    app.innerHTML =
+      '<section class="gs-hero"><div><h1>The week of ' + esc(dt(state.week.week.start)) + "</h1>" +
+      "<p>What the store did, what each product did with the traffic and the budget it was given, and which creative earned it. A blank means not measured, never zero.</p></div>" +
+      '<div class="gs-meta">' + dropLine(state.week) + '<div><span>week</span><span class="v">' + esc(state.week.week.start) + "</span></div>" +
+      '<div><span>as of</span><span class="v">' + esc(dt(state.week.week.as_of)) + "</span></div>" +
+      '<div><span>products with activity</span><span class="v">' + state.products.length + "</span></div>" +
+      '<div><span>ads that spent</span><span class="v">' + state.ads.length + "</span></div></div></section>" +
+      renderAnswers(++i, state.ads, state.products, state.pages, state.week) +
+      renderSite(state.week, ++i) +
+      renderPages(++i, state.pages, state.week) +
+      renderProducts(++i, state.products, state.week) +
+      renderCreatives(++i, state.ads, state.formats, state.shots, state.products, state.adBaselines, state.week) +
+      '<div class="gs-foot"><span>contract · ' + esc(state.week.contract_version) + "</span><span>generated " +
+      esc(new Date().toISOString().slice(0, 16).replace("T", " ")) + "</span></div>";
+  }
+
+  // One listener for every sortable header on the page.
+  app.addEventListener("click", (event) => {
+    const shot = event.target.closest && event.target.closest("[data-full]");
+    if (shot) { openCreative(shot.getAttribute("data-ad")); return; }
+    const opener = event.target.closest && event.target.closest("[data-open]");
+    if (opener) {
+      const set = openRows[opener.getAttribute("data-open")];
+      const id = opener.getAttribute("data-row");
+      if (set) {
+        if (set.has(id)) set.delete(id);
+        else set.add(id);
+        render();
+      }
+      return;
+    }
+    const th = event.target.closest && event.target.closest("[data-sort]");
+    if (!th) return;
+    const name = th.getAttribute("data-sort");
+    const key = th.getAttribute("data-key");
+    const s = sorts[name];
+    if (!s) return;
+    if (s.key === key) s.dir = s.dir === -1 ? 1 : -1;
+    else { s.key = key; s.dir = key === "title" || key === "name" || key === "page" || key === "product" || key === "format" ? 1 : -1; }
+    render();
+  });
+  app.addEventListener("change", (event) => {
+    if (!event.target) return;
+    if (event.target.id === "campaign-pick") {
+      campaignFilter = event.target.value;
+      render();
+      return;
+    }
+    if (event.target.id === "ad-sort") {
+      gallerySort = event.target.value;
+      render();
+      return;
+    }
+    const adId = event.target.getAttribute && event.target.getAttribute("data-ad");
+    if (!adId || !event.target.value) return;
+    tagAdProduct(adId, event.target.value, event.target);
+  });
+
+  // The creative, full size, with what it did underneath it.
+  function openCreative(adId) {
+    const r = (state.ads || []).find((x) => x.id === adId);
+    if (!r) return;
+    const src = r.image || r.thumb;
+    if (!src) return;
+    const box = document.getElementById("lightbox");
+    box.innerHTML = '<img src="' + esc(src) + '" alt="' + esc(r.name) + '">' +
+      '<div class="gs-lightbox-c"><b>' + esc(r.name) + "</b><br>" +
+      esc([r.campaign, r.format, r.product || "no product connected"].filter(Boolean).join(" · ")) + "<br>" +
+      esc(int(r.spend) + " spent · CTR " + pct(r.ctr, 2) + " · CPM " + int(r.cpm) +
+        " · ROAS raw " + ratio(r.roas) + " · net " + ratio(r.netRoas) + " · delivered " + ratio(r.deliveredRoas)) +
+      '<br><a href="' + esc(src) + '" target="_blank" rel="noreferrer">open the image in a new tab</a></div>';
+    box.hidden = false;
+  }
+
+  async function tagAdProduct(adId, productId, control) {
+    const holder = control.closest ? control.closest(".gs-cre-pick") : null;
+    const say = (text, bad) => { if (holder) holder.innerHTML = '<span class="' + (bad ? "gs-ad-bad" : "gs-ad-good") + '">' + esc(text) + "</span>"; };
+    say("saving…");
+    try {
+      const url = new URL(API + "/growth/ad-product", location.origin);
+      const res = await fetch(url, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ ad_id: adId, product_id: productId })
+      });
+      const body = await res.json().catch(() => null);
+      if (!res.ok || !body || !body.ok) throw new Error((body && body.error) || "HTTP " + res.status);
+      // Show it at once on the row that was just tagged, so the page does not have
+      // to be reloaded to see the answer, and keep it after the next render.
+      const product = (state.catalogue || new Map()).get(productId) || null;
+      for (const row of state.ads) {
+        if (row.id !== adId) continue;
+        row.productId = productId;
+        row.product = product ? product.title : productId;
+        row.productStock = product ? product.stock : null;
+      }
+      render();
+    } catch (err) {
+      say(String(err.message || err), true);
+    }
+  }
+  // Anywhere on it closes it, and so does Escape: nothing to hunt for.
+  const lightbox = document.getElementById("lightbox");
+  lightbox.addEventListener("click", () => { lightbox.hidden = true; lightbox.innerHTML = ""; });
+  window.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !lightbox.hidden) { lightbox.hidden = true; lightbox.innerHTML = ""; }
+  });
+
+  app.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    const hit = event.target.closest && (event.target.closest("[data-sort]") || event.target.closest("[data-open]"));
+    if (!hit) return;
+    event.preventDefault();
+    hit.click();
+  });
+
+  async function load() {
+    app.innerHTML = '<div class="gs-note">Loading the week…</div>';
+    let week;
+    try {
+      week = await getJson("/growth/week", { week_start: weekFromHash() });
+    } catch (err) {
+      app.innerHTML = '<div class="gs-err">' + esc(err.message) + "</div>";
+      return;
+    }
+    const w = week.week.start;
+    weekInput.value = w;
+    document.getElementById("contract").textContent = w + " → " + week.week.end + (week.week.is_complete ? "" : " · in progress");
+
+    const side = (params) => getJson("/growth/entity", Object.assign({ week_start: w }, params)).catch(() => null);
+    // two thirds of the sizes off the page and, while the product total was summed
+    // from them, understated the stock of every product that did not make the cut.
+    const allRows = async (params, pageSize) => {
+      const rows = [];
+      let baselines = {};
+      for (let offset = 0; offset < pageSize * 6; offset += pageSize) {
+        const page = await side(Object.assign({ limit: String(pageSize), offset: String(offset) }, params));
+        if (!page || !page.rows) break;
+        rows.push(...page.rows);
+        baselines = page.baselines || baselines;
+        if (page.rows.length < pageSize) break;
+      }
+      return { ok: true, rows, baselines };
+    };
+    const [pagesRes, productsRes, variantsRes, adsRes, formats, shots] = await Promise.all([
+      side({ entity: "breakdown", breakdown: "shopify.landing_page", limit: "80", metrics: "sessions_shopify,atc_rate_shopify,checkout_rate_shopify,cvr_shopify" }),
+      side({ entity: "product", limit: "400", metrics: "units_total,orders_containing,ad_spend,net_sales_attributed,return_requests_units,return_request_rate_units,exchange_requests_units,inventory_on_hand" }),
+      allRows({ entity: "variant", metrics: "inventory_on_hand,units_total" }, 500),
+      side({ entity: "ad", limit: "80", metrics: "ad_spend,cpm,outbound_ctr,cpc_outbound,landing_page_views,platform_atc,platform_purchases,platform_revenue,platform_roas,attributed_orders,attributed_net_sales,net_roas_attributed,delivered_roas_attributed" }),
+      side({ entity: "format", limit: "10", metrics: "ad_spend,cpm,outbound_ctr,platform_roas" }),
+      side({ entity: "angle", limit: "20", metrics: "ad_spend,cpm,outbound_ctr,platform_roas" })
+    ]);
+
+    const pages = pageRows(pagesRes);
+    const products = productsRes ? productRows(productsRes, pages, variantsRes) : [];
+    const cat = catalogue(productsRes, variantsRes);
+    state = { week, pages, products, catalogue: cat, ads: adRows(adsRes, cat), formats, shots, adBaselines: (adsRes && adsRes.baselines) || {} };
+    render();
+  }
+
+  document.getElementById("prev").onclick = () => shift(-7);
+  document.getElementById("next").onclick = () => shift(7);
+  document.getElementById("print").onclick = () => window.print();
+  document.getElementById("theme").onclick = () => {
+    const light = document.documentElement.getAttribute("data-theme") === "light";
+    document.documentElement.setAttribute("data-theme", light ? "dark" : "light");
+    try { localStorage.setItem("gs.theme", light ? "dark" : "light"); } catch (_) {}
+  };
+  weekInput.onchange = () => { if (weekInput.value) location.hash = "week=" + weekInput.value; };
+  window.addEventListener("hashchange", () => { if (/week=/.test(location.hash)) load(); });
+  load();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,51 @@
+{
+  "fixture": "Synthetic envelope for state case \"missing\". Not a measurement.",
+  "definition": {
+    "metric_key": "delivered_revenue",
+    "version": 1,
+    "label": "Delivered revenue",
+    "surface": "economics",
+    "unit": "EGP",
+    "confidence": "measured",
+    "formula": "Σ (total − shipping_charged − tax) over delivered orders created in the period",
+    "session_basis": null,
+    "basis_label": null,
+    "grains": [
+      "week",
+      "drop",
+      "offer",
+      "location",
+      "product",
+      "variant",
+      "size",
+      "category",
+      "governorate"
+    ],
+    "direction": "higher_better",
+    "comparison_mode": "drop_day",
+    "treatment": "Right-censored: orders in transit are not delivered yet; coverage states the resolved share.",
+    "source_tables": [
+      "fact_order"
+    ],
+    "effective_from": "1970-01-01",
+    "effective_to": null
+  },
+  "envelope": {
+    "value": null,
+    "unit": "EGP",
+    "metric": "delivered_revenue",
+    "state": "missing",
+    "secondary_states": [],
+    "confidence": "measured",
+    "coverage": null,
+    "comparison": null,
+    "basis": null,
+    "sample": null,
+    "state_detail": {
+      "missing": {
+        "reason": "unwired"
+      }
+    },
+    "definition_version": 1
+  }
+}

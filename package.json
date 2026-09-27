@@ -1,0 +1,20 @@
+{
+  "name": "coddi-report-worker",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "check": "node test/check-worker-syntax.js",
+    "test": "node test/baseline.test.js && node test/growth-os.test.js && node test/weekly-page.test.js && node growth-os/generate.js --check",
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "deploy:ui": "cd report-ui && wrangler pages deploy . --project-name coddi-report-ui --branch main"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "wrangler": "^4.103.0"
+  }
+}

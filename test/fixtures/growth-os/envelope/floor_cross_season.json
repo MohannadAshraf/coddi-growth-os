@@ -1,0 +1,281 @@
+{
+  "fixture": "Synthetic envelope for state case \"floor_cross_season\". Not a measurement.",
+  "definition": {
+    "metric_key": "net_sales_attributed",
+    "version": 1,
+    "label": "Net sales",
+    "surface": "economics",
+    "unit": "EGP",
+    "confidence": "measured",
+    "formula": "gross_sales − discounts − reversals_attributed (reversals attributed to order week)",
+    "session_basis": null,
+    "basis_label": null,
+    "grains": [
+      "week",
+      "drop",
+      "offer",
+      "location",
+      "product",
+      "variant",
+      "size",
+      "category",
+      "governorate"
+    ],
+    "direction": "higher_better",
+    "comparison_mode": "drop_day",
+    "treatment": null,
+    "source_tables": [
+      "fact_order",
+      "fact_order_line",
+      "fact_reversal"
+    ],
+    "effective_from": "1970-01-01",
+    "effective_to": null
+  },
+  "envelope": {
+    "value": 700,
+    "unit": "EGP",
+    "metric": "net_sales_attributed",
+    "state": "contaminated",
+    "secondary_states": [],
+    "confidence": "measured",
+    "coverage": null,
+    "comparison": {
+      "mode": "floor_pool",
+      "rule_version": "drop-cycle.v3",
+      "phase_start_drop_day": 21,
+      "scope": "cross_season",
+      "current": {
+        "drop_id": "autumn-1",
+        "window": {
+          "start": "1999-09-26",
+          "end": "1999-10-02",
+          "days": 7,
+          "drop_day_start": 25,
+          "drop_day_end": 31
+        },
+        "value": 700
+      },
+      "pool": [
+        {
+          "drop_id": "spring-1",
+          "window": {
+            "start": "1999-03-22",
+            "end": "1999-03-28",
+            "days": 7,
+            "drop_day_start": 21,
+            "drop_day_end": 27
+          },
+          "value": 800
+        },
+        {
+          "drop_id": "spring-1",
+          "window": {
+            "start": "1999-03-29",
+            "end": "1999-04-04",
+            "days": 7,
+            "drop_day_start": 28,
+            "drop_day_end": 34
+          },
+          "value": 950
+        },
+        {
+          "drop_id": "spring-2",
+          "window": {
+            "start": "1999-05-06",
+            "end": "1999-05-12",
+            "days": 7,
+            "drop_day_start": 21,
+            "drop_day_end": 27
+          },
+          "value": 870
+        },
+        {
+          "drop_id": "spring-2",
+          "window": {
+            "start": "1999-05-13",
+            "end": "1999-05-19",
+            "days": 7,
+            "drop_day_start": 28,
+            "drop_day_end": 34
+          },
+          "value": 910
+        },
+        {
+          "drop_id": "spring-3",
+          "window": {
+            "start": "1999-06-22",
+            "end": "1999-06-28",
+            "days": 7,
+            "drop_day_start": 21,
+            "drop_day_end": 27
+          },
+          "value": 840
+        },
+        {
+          "drop_id": "spring-3",
+          "window": {
+            "start": "1999-06-29",
+            "end": "1999-07-05",
+            "days": 7,
+            "drop_day_start": 28,
+            "drop_day_end": 34
+          },
+          "value": 880
+        }
+      ],
+      "excluded": [
+        {
+          "drop_id": "spring-1",
+          "window": {
+            "start": "1999-04-05",
+            "end": "1999-04-11",
+            "days": 7,
+            "drop_day_start": 35,
+            "drop_day_end": 41
+          },
+          "reason": "cycle_cap"
+        },
+        {
+          "drop_id": "spring-2",
+          "window": {
+            "start": "1999-05-20",
+            "end": "1999-05-26",
+            "days": 7,
+            "drop_day_start": 35,
+            "drop_day_end": 41
+          },
+          "reason": "cycle_cap"
+        },
+        {
+          "drop_id": "spring-3",
+          "window": {
+            "start": "1999-07-06",
+            "end": "1999-07-12",
+            "days": 7,
+            "drop_day_start": 35,
+            "drop_day_end": 41
+          },
+          "reason": "cycle_cap"
+        },
+        {
+          "drop_id": "spring-3",
+          "window": {
+            "start": "1999-07-13",
+            "end": "1999-07-19",
+            "days": 7,
+            "drop_day_start": 42,
+            "drop_day_end": 48
+          },
+          "reason": "cycle_cap"
+        },
+        {
+          "drop_id": "spring-3",
+          "window": {
+            "start": "1999-07-20",
+            "end": "1999-07-26",
+            "days": 7,
+            "drop_day_start": 49,
+            "drop_day_end": 55
+          },
+          "reason": "cycle_cap"
+        },
+        {
+          "drop_id": "spring-3",
+          "window": {
+            "start": "1999-07-27",
+            "end": "1999-08-02",
+            "days": 7,
+            "drop_day_start": 56,
+            "drop_day_end": 62
+          },
+          "reason": "cycle_cap"
+        },
+        {
+          "drop_id": "spring-3",
+          "window": {
+            "start": "1999-08-03",
+            "end": "1999-08-09",
+            "days": 7,
+            "drop_day_start": 63,
+            "drop_day_end": 69
+          },
+          "reason": "cycle_cap"
+        },
+        {
+          "drop_id": "spring-3",
+          "window": {
+            "start": "1999-08-10",
+            "end": "1999-08-16",
+            "days": 7,
+            "drop_day_start": 70,
+            "drop_day_end": 76
+          },
+          "reason": "cycle_cap"
+        },
+        {
+          "drop_id": "spring-3",
+          "window": {
+            "start": "1999-08-17",
+            "end": "1999-08-23",
+            "days": 7,
+            "drop_day_start": 77,
+            "drop_day_end": 83
+          },
+          "reason": "cycle_cap"
+        },
+        {
+          "drop_id": "spring-3",
+          "window": {
+            "start": "1999-08-24",
+            "end": "1999-08-30",
+            "days": 7,
+            "drop_day_start": 84,
+            "drop_day_end": 90
+          },
+          "reason": "cycle_cap"
+        }
+      ],
+      "basis_method": "median",
+      "basis_value": 875,
+      "spread": {
+        "min": 800,
+        "max": 950
+      },
+      "n": 6,
+      "position": {
+        "below": 0,
+        "above": 6,
+        "of": 6
+      },
+      "delta_abs": -175,
+      "delta_pct": -0.2,
+      "value_basis": "nominal",
+      "deflator": null,
+      "currency": "EGP",
+      "flags": [
+        {
+          "kind": "cross_season",
+          "offer_id": null,
+          "start": null,
+          "end": null,
+          "note": "This season has 0 floor window(s); compared against the fixture-spring season's floor instead."
+        }
+      ]
+    },
+    "basis": null,
+    "sample": null,
+    "state_detail": {
+      "contaminated": [
+        {
+          "kind": "cross_season",
+          "offer_id": null,
+          "start": null,
+          "end": null,
+          "note": "This season has 0 floor window(s); compared against the fixture-spring season's floor instead."
+        }
+      ]
+    },
+    "definition_version": 1
+  }
+}

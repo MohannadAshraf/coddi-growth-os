@@ -1,0 +1,447 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="description" content="Coddiwomple weekly ecommerce performance report">
+  <title>Coddiwomple Weekly Report</title>
+  <link rel="stylesheet" href="./styles.css?v=24">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to report</a>
+
+  <header class="topbar">
+    <a class="brand" href="#report-studio" aria-label="Coddiwomple report workspace">
+      <span class="brand-mark">C</span>
+      <span>Coddiwomple</span>
+    </a>
+    <button class="sidebar-toggle" id="sidebar-toggle" type="button" aria-controls="report-sidebar" aria-expanded="false">Tools</button>
+    <div class="week-chip" id="week-chip">Loading week</div>
+  </header>
+
+  <main id="main">
+    <div class="shell">
+      <div class="status-panel" id="loading-state" role="status">
+        <span class="loader" aria-hidden="true"></span>
+        <div>
+          <strong>Preparing the weekly review</strong>
+          <p id="loading-message">Reading the completed report data. The saved AI report check follows automatically.</p>
+        </div>
+      </div>
+
+      <div class="status-panel error" id="error-state" role="alert" hidden>
+        <span class="status-icon">!</span>
+        <div>
+          <strong>Report unavailable</strong>
+          <p id="error-message"></p>
+        </div>
+      </div>
+
+      <section class="sync-panel" id="sync-state" aria-live="polite" hidden>
+        <div class="sync-panel-head">
+          <div>
+            <p class="kicker">Weekly sync</p>
+            <h2 id="sync-title">Sync in progress</h2>
+            <p id="sync-subtitle"></p>
+          </div>
+          <span class="sync-badge progress" id="sync-panel-badge">Queued</span>
+        </div>
+        <div class="sync-progress-grid">
+          <div><span>Current step</span><strong id="sync-current-step">Queued</strong></div>
+          <div><span>Retry count</span><strong id="sync-retry-count">0</strong></div>
+          <div><span>Step attempt</span><strong id="sync-step-attempt">0</strong></div>
+          <div><span>Elapsed</span><strong id="sync-elapsed">Starting</strong></div>
+        </div>
+        <div class="sync-sources">
+          <span id="sync-ga4">GA4 pending</span>
+          <span id="sync-meta">Meta pending</span>
+          <span id="sync-shopify">Shopify pending</span>
+          <span id="sync-report">Report pending</span>
+        </div>
+        <p class="sync-message" id="sync-message"></p>
+        <div class="sync-error-detail" id="sync-error-detail" hidden>
+          <div><span>Failed step</span><strong id="sync-error-step">Unknown step</strong></div>
+          <div><span>Cause</span><strong id="sync-error-cause">No error message was recorded.</strong></div>
+        </div>
+        <div class="sync-actions">
+          <button type="button" id="sync-refresh">Refresh status</button>
+          <button type="button" id="sync-retry-week" hidden>Retry this week</button>
+          <button type="button" id="sync-open-latest">Open latest completed report</button>
+        </div>
+      </section>
+
+      <div id="report" hidden>
+        <section class="report-controls" aria-label="Report week controls">
+          <div>
+            <p class="kicker">Reporting week</p>
+            <strong id="week-range-label">Loading week</strong>
+          </div>
+          <div class="week-controls">
+            <button type="button" id="previous-week" aria-label="Previous completed week">Prev</button>
+            <select id="week-select" aria-label="Select completed report week"></select>
+            <button type="button" id="next-week" aria-label="Next completed week">Next</button>
+            <button type="button" id="sync-latest">Sync latest</button>
+          </div>
+          <div class="sync-status" aria-live="polite">
+            <span class="sync-badge empty" id="sync-status-badge">Not synced</span>
+            <span id="sync-status-detail">Operational sync status</span>
+          </div>
+        </section>
+
+        <div class="report-workspace">
+          <aside class="report-sidebar" id="report-sidebar" aria-label="Report tools">
+            <nav class="sidebar-nav" aria-label="Report sections">
+              <p class="sidebar-label">Workspace</p>
+              <a href="#ad-mapping">Ad mapping</a>
+              <a href="#ai-report-output">Saved AI report</a>
+              <p class="sidebar-label">Weekly report</p>
+              <a href="#leadership">Leadership</a>
+              <a href="#drivers">Drivers</a>
+              <a href="#diagnosis">Diagnosis</a>
+              <a href="#product-diagnosis">Products</a>
+              <a href="#evidence">Evidence</a>
+              <a href="#actions">Actions</a>
+            </nav>
+
+            <details class="sidebar-tool" id="sidebar-funding-tool">
+              <summary>
+                <span>Meta spend</span>
+                <strong>Funding monitor</strong>
+              </summary>
+        <section class="funding-monitor section-anchor" id="funding-monitor" aria-labelledby="funding-monitor-title">
+          <header class="funding-monitor-head">
+            <div>
+              <p class="kicker">Payment runway · automatic</p>
+              <h2 id="funding-monitor-title">Meta Funding Monitor</h2>
+              <p id="funding-monitor-explanation">Meta does not expose the current Funds wallet through the verified standard account response. This estimate begins from one calibration and is then updated automatically using Meta funding and billing activities.</p>
+            </div>
+            <span class="funding-status setup" id="funding-status">Setup Required</span>
+          </header>
+          <div class="funding-kpi-grid" id="funding-kpis" aria-live="polite">
+            <div><span>Estimated Meta Funds</span><strong id="funding-wallet">—</strong><small>Activity-adjusted estimate</small></div>
+            <div><span>Current amount owed</span><strong id="funding-owed">—</strong><small>Verified Meta API balance</small></div>
+            <div><span>Risk-adjusted coverage</span><strong id="funding-coverage">—</strong><small>Wallet − owed − reserve</small></div>
+            <div class="runway"><span>Estimated runway</span><strong id="funding-runway">—</strong><small id="funding-confidence">Awaiting calibration</small></div>
+            <div><span>Recommended recharge</span><strong id="funding-recharge">—</strong><small>Rounded target for 72 hours</small></div>
+          </div>
+          <div class="funding-detail-grid">
+            <div><span>Operational reserve</span><strong id="funding-reserve">—</strong></div>
+            <div><span>Effective velocity</span><strong id="funding-velocity">—</strong></div>
+            <div><span>3h / 6h / 24h</span><strong id="funding-windows">—</strong></div>
+            <div><span>Latest funding</span><strong id="funding-latest-add">None detected</strong></div>
+            <div><span>Latest billing charge</span><strong id="funding-latest-charge">None detected</strong></div>
+            <div><span>Activity synchronization</span><strong id="funding-sync">Not started</strong></div>
+          </div>
+          <p class="funding-notice" id="funding-notice">Enter the Funds value currently displayed in Meta Billing. Future funding additions and prepaid-balance deductions will be detected automatically from Meta.</p>
+          <details class="funding-admin" id="funding-admin">
+            <summary>Administrator setup and controls</summary>
+            <div class="funding-admin-grid">
+              <form id="funding-calibration-form">
+                <h3>One-time calibration</h3>
+                <p>This is not a top-up record. It establishes the current wallet once; future changes are automatic.</p>
+                <label>Current Meta Billing Funds (EGP)<input id="funding-calibration-amount" inputmode="decimal" required placeholder="6322.55"></label>
+                <label>Fallback daily spend (EGP)<input id="funding-fallback-daily" inputmode="decimal" required value="7500.00"></label>
+                <label class="funding-confirm"><input id="funding-confirm" type="checkbox" required> I confirm this is the exact Funds value currently displayed in Meta Billing.</label>
+                <label class="funding-confirm"><input id="funding-recalibration" type="checkbox"> Explicit recalibration (starts a new cycle and boundary)</label>
+                <button type="submit" id="funding-calibrate">Confirm calibration</button>
+              </form>
+              <form id="funding-settings-form">
+                <h3>Safety settings</h3>
+                <label>Fixed reserve (EGP)<input id="funding-fixed-reserve" inputmode="decimal" value="500.00"></label>
+                <label>Operational safety buffer (%)<input id="funding-reserve-percentage" inputmode="decimal" value="15"></label>
+                <label>Settlement grace (minutes)<input id="funding-grace" inputmode="numeric" value="15"></label>
+                <label>Recharge rounding increment (EGP)<input id="funding-rounding" inputmode="decimal" value="1000.00"></label>
+                <button type="submit">Save settings</button>
+                <button type="button" class="secondary" id="funding-telegram-test">Send Telegram TEST</button>
+              </form>
+            </div>
+            <p class="funding-admin-message" id="funding-admin-message" role="status"></p>
+            <div class="funding-drill-actions">
+              <button type="button" data-funding-view="activities">Recent events</button>
+              <button type="button" data-funding-view="snapshots">Snapshots</button>
+              <button type="button" data-funding-view="alerts">Alert history</button>
+              <button type="button" data-funding-view="runs">Run errors</button>
+              <button type="button" data-funding-view="reconciliation">July reconciliation</button>
+            </div>
+            <div class="funding-drilldown" id="funding-drilldown" hidden></div>
+          </details>
+        </section>
+            </details>
+
+            <details class="sidebar-tool" id="sidebar-ai-tool" open>
+              <summary>
+                <span>AI report</span>
+                <strong>Create report</strong>
+              </summary>
+        <section class="ai-report-panel section-anchor" id="ai-report" aria-label="AI product intelligence report">
+          <div class="ai-report-head">
+            <div>
+              <p class="kicker">AI decision report</p>
+              <h2>Weekly Intelligence</h2>
+              <p>Products, ads, and creatives in one saved report.</p>
+            </div>
+            <div class="ai-report-actions">
+              <button type="button" id="ai-generate-general" disabled>Generate report</button>
+              <button type="button" id="ai-generate-goal" disabled>Generate for goal</button>
+            </div>
+          </div>
+          <div class="ai-goal-box">
+            <label>
+              Goal-focused report goal
+              <textarea id="ai-goal-text" rows="3" maxlength="1200" placeholder="Example: sell through slow-moving inventory without hurting winners"></textarea>
+            </label>
+            <div class="ai-goal-suggestions" id="ai-goal-suggestions"></div>
+          </div>
+          <div class="ai-report-status loading" id="ai-report-status" role="status" aria-live="polite" aria-busy="true">
+            <span class="ai-status-indicator" aria-hidden="true"></span>
+            <div>
+              <strong>Checking saved AI report</strong>
+              <p>Loading the selected week first. No AI provider request is being made.</p>
+            </div>
+          </div>
+        </section>
+            </details>
+          </aside>
+
+          <div class="report-canvas" id="report-studio">
+          <section class="ad-mapping-workspace section-anchor" id="ad-mapping" aria-labelledby="ad-mapping-title">
+            <header class="ad-mapping-head">
+              <div>
+                <p class="kicker">Before generation</p>
+                <h2 id="ad-mapping-title">Map ads to products</h2>
+              </div>
+              <div class="section-head-actions">
+                <div class="ad-mapping-summary" aria-live="polite">
+                  <span><b id="ad-mapping-unresolved">0</b> unresolved</span>
+                  <span><b id="ad-mapping-mapped">0</b> mapped</span>
+                  <span><b id="ad-mapping-total">0</b> ads</span>
+                </div>
+                <button type="button" class="section-collapse" id="ad-mapping-collapse" aria-controls="ad-mapping-body" aria-expanded="true">Collapse</button>
+              </div>
+            </header>
+            <div id="ad-mapping-body">
+            <div class="ad-mapping-controls">
+              <input id="ad-mapping-search" type="search" placeholder="Search ads, campaigns, or products" aria-label="Search ad mappings">
+              <div class="ad-mapping-filters" role="group" aria-label="Filter ad mappings">
+                <button type="button" class="active" data-ad-mapping-filter="unresolved">Unresolved</button>
+                <button type="button" data-ad-mapping-filter="all">All</button>
+                <button type="button" data-ad-mapping-filter="mapped">Mapped</button>
+              </div>
+              <button type="button" class="refresh-creative-images" id="ad-mapping-refresh-creatives">Refresh images</button>
+            </div>
+            <div class="ad-mapping-list" id="ad-mapping-list"></div>
+            <div class="ad-mapping-pagination">
+              <button type="button" id="ad-mapping-previous" aria-label="Previous mapping page">Previous</button>
+              <span id="ad-mapping-page">Page 1 of 1</span>
+              <button type="button" id="ad-mapping-next" aria-label="Next mapping page">Next</button>
+            </div>
+            <p class="ad-mapping-status" id="ad-mapping-status" role="status"></p>
+            </div>
+          </section>
+
+          <section class="ai-report-output section-anchor" id="ai-report-output" aria-label="Saved weekly AI intelligence" hidden>
+          <article class="ai-report-card" id="ai-report-card" hidden>
+            <header>
+              <div>
+                <p class="kicker" id="ai-report-mode">Generated weekly report</p>
+                <h2 id="ai-report-title">Weekly Intelligence</h2>
+                <p id="ai-report-meta"></p>
+              </div>
+              <div class="ai-report-toolbar">
+                <button type="button" class="section-collapse" id="ai-report-collapse" aria-controls="ai-report-content" aria-expanded="true">Collapse</button>
+                <button type="button" id="ai-report-download">Download</button>
+                <button type="button" id="ai-report-regenerate">Regenerate</button>
+              </div>
+            </header>
+            <div class="ai-report-content" id="ai-report-content"></div>
+          </article>
+        </section>
+          </div>
+        </div>
+
+        <section class="weekly-report-boundary section-anchor" id="weekly-report" aria-labelledby="weekly-report-title">
+          <div>
+            <p class="kicker">Weekly performance report</p>
+            <h2 id="weekly-report-title">Measured performance and operating detail</h2>
+          </div>
+          <span id="weekly-report-range">Selected week</span>
+        </section>
+
+        <section class="hero section-anchor" id="leadership">
+          <div class="hero-copy">
+            <p class="kicker">Weekly leadership review</p>
+            <h1>clear view of weekly performance.</h1>
+            <p class="hero-summary" id="executive-summary"></p>
+            <div class="hero-meta">
+              <span id="date-range"></span>
+              <span id="report-status"></span>
+              <span id="synced-at"></span>
+            </div>
+          </div>
+          <aside class="hero-callout">
+            <p class="callout-label">Decision focus</p>
+            <p id="decision-focus"></p>
+          </aside>
+        </section>
+
+        <aside class="caveats" id="caveats" hidden>
+          <strong>Data caveats</strong>
+          <ul id="caveat-list"></ul>
+        </aside>
+
+        <section class="section">
+          <div class="section-heading">
+            <div>
+              <p class="kicker">Leadership scoreboard</p>
+              <h2>Five numbers for the room</h2>
+            </div>
+            <p>Current performance, recent direction, and context against the prior four completed weeks.</p>
+          </div>
+          <div class="kpi-grid" id="leadership-kpis"></div>
+          <div class="inventory-health">
+            <div class="inventory-health-head">
+              <div>
+                <p class="kicker">Inventory health</p>
+                <h3>Demand capture and stock efficiency</h3>
+              </div>
+              <p>Sell-through is directional, not a standalone target. Read it with stockouts and days of cover.</p>
+            </div>
+            <div class="inventory-kpi-grid" id="inventory-kpis"></div>
+          </div>
+        </section>
+
+        <section class="section section-anchor" id="drivers">
+          <div class="section-heading">
+            <div>
+              <p class="kicker">Performance drivers</p>
+              <h2>What moved the sales result</h2>
+            </div>
+            <p>Sales are broken into traffic, conversion, and order value, then checked against discounts, refunds, and stock availability.</p>
+          </div>
+          <div class="driver-tree" id="driver-tree"></div>
+          <div class="pressure-strip" id="pressure-strip"></div>
+        </section>
+
+        <section class="section section-anchor" id="diagnosis">
+          <div class="section-heading">
+            <div>
+              <p class="kicker">Primary diagnosis</p>
+              <h2>The bottleneck to address first</h2>
+            </div>
+          </div>
+          <article class="diagnosis-panel">
+            <div class="diagnosis-main">
+              <span class="diagnosis-badge" id="diagnosis-label"></span>
+              <h3 id="diagnosis-title"></h3>
+              <p id="diagnosis-copy"></p>
+            </div>
+            <div class="diagnosis-evidence">
+              <div>
+                <span>Evidence</span>
+                <ul id="diagnosis-evidence"></ul>
+              </div>
+              <div>
+                <span>Why it matters</span>
+                <p id="diagnosis-impact"></p>
+              </div>
+              <div>
+                <span>Next-week proof</span>
+                <p id="diagnosis-check"></p>
+              </div>
+            </div>
+          </article>
+        </section>
+
+        <section class="section section-anchor" id="product-diagnosis">
+          <div class="section-heading">
+            <div>
+              <p class="kicker">Product/SKU diagnosis</p>
+              <h2>Supply constraints versus demand problems</h2>
+            </div>
+            <div class="section-heading-actions">
+              <p>Products and SKUs are split before actions are scored, so restock, conversion, returns, and monitor decisions do not blur together.</p>
+              <button type="button" class="section-collapse" id="product-diagnosis-collapse" aria-controls="product-diagnosis-grid" aria-expanded="true">Collapse</button>
+            </div>
+          </div>
+          <div class="product-diagnosis-grid" id="product-diagnosis-grid"></div>
+        </section>
+
+        <section class="section section-anchor" id="evidence">
+          <div class="section-heading">
+            <div>
+              <p class="kicker">Detailed review</p>
+              <h2>Review what supports the conclusion</h2>
+            </div>
+            <p>Choose a section to inspect the details without crowding the main story.</p>
+          </div>
+          <div class="tabs" role="tablist" aria-label="Evidence categories" id="evidence-tabs"></div>
+          <div class="evidence-panel" id="evidence-panel" role="tabpanel"></div>
+        </section>
+
+        <section class="section section-anchor" id="actions">
+          <div class="section-heading">
+            <div>
+              <p class="kicker">Action register</p>
+              <h2>Clear owners and measurable checks</h2>
+            </div>
+            <p id="action-summary">Actions are grouped by accountable team, with the highest severity shown first.</p>
+          </div>
+          <div class="action-groups" id="action-groups"></div>
+        </section>
+
+        <footer class="report-footer">
+          <span>Coddiwomple weekly performance system</span>
+          <span id="footer-week"></span>
+        </footer>
+        <div class="sidebar-backdrop" id="sidebar-backdrop" aria-hidden="true"></div>
+      </div>
+    </div>
+  </main>
+
+  <div class="ai-prerequisite-modal" id="ai-prerequisite-modal" hidden>
+    <div class="ai-prerequisite-backdrop" data-ai-prerequisite-close></div>
+    <section class="ai-prerequisite-panel" role="dialog" aria-modal="true" aria-labelledby="ai-prerequisite-title" aria-describedby="ai-prerequisite-summary">
+      <header>
+        <div>
+          <p class="kicker">Generation preflight</p>
+          <h2 id="ai-prerequisite-title">Review before generating</h2>
+          <p id="ai-prerequisite-summary">Checking this week's evidence and mappings.</p>
+        </div>
+        <button type="button" class="modal-close" id="ai-prerequisite-close" aria-label="Close generation review">Close</button>
+      </header>
+      <div class="ai-prerequisite-body">
+        <ul class="ai-prerequisite-list" id="ai-prerequisite-list"></ul>
+      </div>
+      <footer>
+        <p id="ai-prerequisite-cost">The server checks for a saved report before making a paid AI request.</p>
+        <div>
+          <button type="button" class="secondary" id="ai-prerequisite-cancel">Cancel</button>
+          <button type="button" id="ai-prerequisite-confirm">Generate anyway</button>
+        </div>
+      </footer>
+    </section>
+  </div>
+
+  <div class="creative-modal" id="creative-modal" hidden>
+    <div class="creative-modal-backdrop" data-creative-close></div>
+    <section class="creative-modal-panel" role="dialog" aria-modal="true" aria-labelledby="creative-modal-title">
+      <header>
+        <div>
+          <p class="kicker">Creative preview</p>
+          <h2 id="creative-modal-title">Ad preview</h2>
+        </div>
+        <button type="button" class="modal-close" id="creative-modal-close" aria-label="Close creative preview">Close</button>
+      </header>
+      <div class="creative-modal-body" id="creative-modal-body"></div>
+    </section>
+  </div>
+
+  <script>
+    window.REPORT_CONFIG = window.REPORT_CONFIG || {
+      apiBase: "/api"
+    };
+  </script>
+  <script src="./app.js?v=32" defer></script>
+</body>
+</html>

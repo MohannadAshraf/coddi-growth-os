@@ -1,0 +1,120 @@
+{
+  "fixture": "Synthetic envelope for state case \"modelled_ok\". Not a measurement.",
+  "definition": {
+    "metric_key": "contribution_margin",
+    "version": 3,
+    "label": "Contribution margin",
+    "surface": "economics",
+    "unit": "EGP",
+    "confidence": "modelled",
+    "formula": "gross_profit − ad_spend − fulfilment_cost_outbound − cod_collection_fees − rto_shipping_waste − refund_value + returned goods COGS",
+    "session_basis": null,
+    "basis_label": null,
+    "grains": [
+      "week",
+      "drop",
+      "offer"
+    ],
+    "direction": "higher_better",
+    "comparison_mode": "drop_day",
+    "treatment": "Modelled while any component is modelled (freight, COD fees). Refunds leave net of the fees the customer pays, and returned stock is credited back at what it cost, because it goes back on the shelf. A returned unit with no cost on file cannot be credited and reads slightly pessimistic. The objective function (§0): delivered contribution margin per drop.",
+    "source_tables": [
+      "fact_order",
+      "fact_order_line",
+      "dim_variant",
+      "fact_ad_daily",
+      "fact_reversal",
+      "dim_geo"
+    ],
+    "effective_from": "1970-01-03",
+    "effective_to": null
+  },
+  "envelope": {
+    "value": 300,
+    "unit": "EGP",
+    "metric": "contribution_margin",
+    "state": "ok",
+    "secondary_states": [],
+    "confidence": "modelled",
+    "coverage": null,
+    "comparison": {
+      "mode": "drop_day",
+      "drop_day": {
+        "start": 3,
+        "end": 9
+      },
+      "current": {
+        "drop_id": "fixture-drop-5",
+        "window": {
+          "start": "2000-01-02",
+          "end": "2000-01-08",
+          "days": 7,
+          "drop_day_start": 3,
+          "drop_day_end": 9
+        },
+        "value": 300
+      },
+      "against": [
+        {
+          "drop_id": "fixture-drop-3",
+          "window": {
+            "start": "1999-11-18",
+            "end": "1999-11-24",
+            "days": 7,
+            "drop_day_start": 3,
+            "drop_day_end": 9
+          },
+          "value": 250
+        },
+        {
+          "drop_id": "fixture-drop-2",
+          "window": {
+            "start": "1999-10-21",
+            "end": "1999-10-27",
+            "days": 7,
+            "drop_day_start": 3,
+            "drop_day_end": 9
+          },
+          "value": 280
+        },
+        {
+          "drop_id": "fixture-drop-1",
+          "window": {
+            "start": "1999-09-23",
+            "end": "1999-09-29",
+            "days": 7,
+            "drop_day_start": 3,
+            "drop_day_end": 9
+          },
+          "value": 260
+        }
+      ],
+      "excluded": [
+        {
+          "drop_id": "fixture-drop-4",
+          "window": {
+            "start": "1999-12-27",
+            "end": "2000-01-02",
+            "days": 7,
+            "drop_day_start": 3,
+            "drop_day_end": 9
+          },
+          "reason": "window_crosses_next_drop",
+          "next_drop_id": "fixture-drop-5"
+        }
+      ],
+      "basis_method": "median",
+      "basis_value": 260,
+      "delta_abs": 40,
+      "delta_pct": 0.1538,
+      "value_basis": "nominal",
+      "deflator": null,
+      "currency": "EGP",
+      "flags": []
+    },
+    "basis": null,
+    "sample": null,
+    "state_detail": {},
+    "definition_version": 3
+  }
+}

@@ -1,0 +1,46 @@
+name = "shopify-sync"
+main = "src/worker.js"
+compatibility_date = "2026-04-06"
+keep_vars = true
+
+[triggers]
+crons = ["1 21,22 * * SAT", "*/30 * * * *", "50 20,21 * * *"]
+
+[[workflows]]
+name = "coddi-weekly-sync"
+binding = "WEEKLY_SYNC_WORKFLOW"
+class_name = "WeeklySyncWorkflow"
+
+[[r2_buckets]]
+binding = "SNAPSHOTS"
+bucket_name = "coddi-report-snapshots"
+preview_bucket_name = "coddi-report-snapshots-preview"
+
+[[d1_databases]]
+binding = "SYNC_DB"
+database_name = "coddi-report-sync-state"
+database_id = "00000000-0000-0000-0000-000000000000"
+migrations_dir = "migrations"
+
+[vars]
+# P0.3 acceptance harness, forced OFF. This must stay pinned to "false" rather
+# than being deleted: keep_vars = true means a var removed from this file is
+# retained on the Worker and inherited by every later version, so deleting the
+# line would silently leave it set to "true" in production.
+SIMULATE_SHEETS_WRITE_FAILURE = "false"
+
+APP_URL = "https://shopify-sync.your-subdomain.workers.dev"
+
+CF_ACCESS_AUD = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+CF_ACCESS_TEAM_DOMAIN = "your-team.cloudflareaccess.com"
+
+GOOGLE_SHEET_ID = "YOUR_GOOGLE_SHEET_ID_PLACEHOLDER_0000000000"
+
+META_AD_ACCOUNT_ID = "100000000000001"
+
+# Requested by /auth/shopify. Must match what Growth OS needs (/growth/source-status).
+SHOPIFY_SCOPES = "read_products,read_inventory,read_orders,read_all_orders,read_customers,read_reports,read_locations"
+SHOPIFY_SHOP_DOMAIN = "your-store.myshopify.com"
+
+REPORT_ALLOWED_ORIGINS = "https://your-report-ui.pages.dev"
+REPORT_ALLOWED_EMAILS = "owner@example.com,reviewer@example.com"

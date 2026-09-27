@@ -1,0 +1,153 @@
+{
+  "fixture": "Synthetic envelope for state case \"floor_pool\". Not a measurement.",
+  "definition": {
+    "metric_key": "net_sales_attributed",
+    "version": 1,
+    "label": "Net sales",
+    "surface": "economics",
+    "unit": "EGP",
+    "confidence": "measured",
+    "formula": "gross_sales − discounts − reversals_attributed (reversals attributed to order week)",
+    "session_basis": null,
+    "basis_label": null,
+    "grains": [
+      "week",
+      "drop",
+      "offer",
+      "location",
+      "product",
+      "variant",
+      "size",
+      "category",
+      "governorate"
+    ],
+    "direction": "higher_better",
+    "comparison_mode": "drop_day",
+    "treatment": null,
+    "source_tables": [
+      "fact_order",
+      "fact_order_line",
+      "fact_reversal"
+    ],
+    "effective_from": "1970-01-01",
+    "effective_to": null
+  },
+  "envelope": {
+    "value": 900,
+    "unit": "EGP",
+    "metric": "net_sales_attributed",
+    "state": "ok",
+    "secondary_states": [],
+    "confidence": "measured",
+    "coverage": null,
+    "comparison": {
+      "mode": "floor_pool",
+      "rule_version": "drop-cycle.v3",
+      "phase_start_drop_day": 21,
+      "scope": "same_season",
+      "current": {
+        "drop_id": "autumn-2",
+        "window": {
+          "start": "1999-11-28",
+          "end": "1999-12-04",
+          "days": 7,
+          "drop_day_start": 39,
+          "drop_day_end": 45
+        },
+        "value": 900
+      },
+      "pool": [
+        {
+          "drop_id": "autumn-1",
+          "window": {
+            "start": "1999-09-22",
+            "end": "1999-09-28",
+            "days": 7,
+            "drop_day_start": 21,
+            "drop_day_end": 27
+          },
+          "value": 800
+        },
+        {
+          "drop_id": "autumn-1",
+          "window": {
+            "start": "1999-09-29",
+            "end": "1999-10-05",
+            "days": 7,
+            "drop_day_start": 28,
+            "drop_day_end": 34
+          },
+          "value": 950
+        },
+        {
+          "drop_id": "autumn-2",
+          "window": {
+            "start": "1999-11-10",
+            "end": "1999-11-16",
+            "days": 7,
+            "drop_day_start": 21,
+            "drop_day_end": 27
+          },
+          "value": 870
+        },
+        {
+          "drop_id": "autumn-2",
+          "window": {
+            "start": "1999-11-17",
+            "end": "1999-11-23",
+            "days": 7,
+            "drop_day_start": 28,
+            "drop_day_end": 34
+          },
+          "value": 910
+        }
+      ],
+      "excluded": [
+        {
+          "drop_id": "autumn-1",
+          "window": {
+            "start": "1999-10-06",
+            "end": "1999-10-12",
+            "days": 7,
+            "drop_day_start": 35,
+            "drop_day_end": 41
+          },
+          "reason": "cycle_cap"
+        },
+        {
+          "drop_id": "autumn-1",
+          "window": {
+            "start": "1999-10-13",
+            "end": "1999-10-19",
+            "days": 7,
+            "drop_day_start": 42,
+            "drop_day_end": 48
+          },
+          "reason": "cycle_cap"
+        }
+      ],
+      "basis_method": "median",
+      "basis_value": 890,
+      "spread": {
+        "min": 800,
+        "max": 950
+      },
+      "n": 4,
+      "position": {
+        "below": 2,
+        "above": 2,
+        "of": 4
+      },
+      "delta_abs": 10,
+      "delta_pct": 0.0112,
+      "value_basis": "nominal",
+      "deflator": null,
+      "currency": "EGP",
+      "flags": []
+    },
+    "basis": null,
+    "sample": null,
+    "state_detail": {},
+    "definition_version": 1
+  }
+}

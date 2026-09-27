@@ -1,0 +1,7 @@
+name = "coddi-report-ui"
+pages_build_output_dir = "."
+compatibility_date = "2026-06-07"
+
+[[services]]
+binding = "REPORT_API"
+service = "shopify-sync"

@@ -1,0 +1,12 @@
+-- Link clicks on the ad fact.
+--
+-- The loader has always asked Meta for inline_link_clicks; nothing stored it. The
+-- landing stage was therefore measured as landing_page_views ÷ outbound clicks,
+-- and on this account that ratio runs 170-198% (measured 2026-09-01..09-14 over
+-- the top-spending ads) — the two count different things, so the stage was
+-- unreadable. Landing page views pair with link clicks.
+--
+-- Rows written before this migration have no link clicks, so the corrected rate
+-- reads missing for them rather than wrong. The 28-day refresh fills recent days
+-- on its next run; older history fills if it is ever re-backfilled.
+ALTER TABLE fact_ad_daily ADD COLUMN clicks_link INTEGER CHECK (clicks_link IS NULL OR clicks_link >= 0);

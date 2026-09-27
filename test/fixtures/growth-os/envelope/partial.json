@@ -1,0 +1,123 @@
+{
+  "fixture": "Synthetic envelope for state case \"partial\". Not a measurement.",
+  "definition": {
+    "metric_key": "orders",
+    "version": 1,
+    "label": "Orders",
+    "surface": "economics",
+    "unit": "count",
+    "confidence": "measured",
+    "formula": "non-excluded orders created in the period",
+    "session_basis": null,
+    "basis_label": null,
+    "grains": [
+      "week",
+      "drop",
+      "offer",
+      "location",
+      "governorate",
+      "cohort",
+      "segment"
+    ],
+    "direction": "higher_better",
+    "comparison_mode": "drop_day",
+    "treatment": null,
+    "source_tables": [
+      "fact_order"
+    ],
+    "effective_from": "1970-01-01",
+    "effective_to": null
+  },
+  "envelope": {
+    "value": 50,
+    "unit": "count",
+    "metric": "orders",
+    "state": "partial",
+    "secondary_states": [],
+    "confidence": "measured",
+    "coverage": 0.8,
+    "comparison": {
+      "mode": "drop_day",
+      "drop_day": {
+        "start": 3,
+        "end": 9
+      },
+      "current": {
+        "drop_id": "fixture-drop-5",
+        "window": {
+          "start": "2000-01-02",
+          "end": "2000-01-08",
+          "days": 7,
+          "drop_day_start": 3,
+          "drop_day_end": 9
+        },
+        "value": 50
+      },
+      "against": [
+        {
+          "drop_id": "fixture-drop-3",
+          "window": {
+            "start": "1999-11-18",
+            "end": "1999-11-24",
+            "days": 7,
+            "drop_day_start": 3,
+            "drop_day_end": 9
+          },
+          "value": 40
+        },
+        {
+          "drop_id": "fixture-drop-2",
+          "window": {
+            "start": "1999-10-21",
+            "end": "1999-10-27",
+            "days": 7,
+            "drop_day_start": 3,
+            "drop_day_end": 9
+          },
+          "value": 45
+        },
+        {
+          "drop_id": "fixture-drop-1",
+          "window": {
+            "start": "1999-09-23",
+            "end": "1999-09-29",
+            "days": 7,
+            "drop_day_start": 3,
+            "drop_day_end": 9
+          },
+          "value": 42
+        }
+      ],
+      "excluded": [
+        {
+          "drop_id": "fixture-drop-4",
+          "window": {
+            "start": "1999-12-27",
+            "end": "2000-01-02",
+            "days": 7,
+            "drop_day_start": 3,
+            "drop_day_end": 9
+          },
+          "reason": "window_crosses_next_drop",
+          "next_drop_id": "fixture-drop-5"
+        }
+      ],
+      "basis_method": "median",
+      "basis_value": 42,
+      "delta_abs": 8,
+      "delta_pct": 0.1905,
+      "value_basis": "nominal",
+      "deflator": null,
+      "currency": "EGP",
+      "flags": []
+    },
+    "basis": null,
+    "sample": null,
+    "state_detail": {
+      "partial": {
+        "coverage": 0.8
+      }
+    },
+    "definition_version": 1
+  }
+}

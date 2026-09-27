@@ -1,0 +1,140 @@
+{
+  "fixture": "Synthetic envelope for state case \"contaminated\". Not a measurement.",
+  "definition": {
+    "metric_key": "gross_sales",
+    "version": 1,
+    "label": "Gross sales",
+    "surface": "economics",
+    "unit": "EGP",
+    "confidence": "measured",
+    "formula": "Σ unit_price × quantity before discounts, non-excluded orders created in the period",
+    "session_basis": null,
+    "basis_label": null,
+    "grains": [
+      "week",
+      "drop",
+      "offer",
+      "location",
+      "product",
+      "variant",
+      "size",
+      "category",
+      "governorate"
+    ],
+    "direction": "higher_better",
+    "comparison_mode": "drop_day",
+    "treatment": null,
+    "source_tables": [
+      "fact_order",
+      "fact_order_line"
+    ],
+    "effective_from": "1970-01-01",
+    "effective_to": null
+  },
+  "envelope": {
+    "value": 1500,
+    "unit": "EGP",
+    "metric": "gross_sales",
+    "state": "contaminated",
+    "secondary_states": [],
+    "confidence": "measured",
+    "coverage": null,
+    "comparison": {
+      "mode": "drop_day",
+      "drop_day": {
+        "start": 3,
+        "end": 9
+      },
+      "current": {
+        "drop_id": "fixture-drop-5",
+        "window": {
+          "start": "2000-01-02",
+          "end": "2000-01-08",
+          "days": 7,
+          "drop_day_start": 3,
+          "drop_day_end": 9
+        },
+        "value": 1500
+      },
+      "against": [
+        {
+          "drop_id": "fixture-drop-3",
+          "window": {
+            "start": "1999-11-18",
+            "end": "1999-11-24",
+            "days": 7,
+            "drop_day_start": 3,
+            "drop_day_end": 9
+          },
+          "value": 1300
+        },
+        {
+          "drop_id": "fixture-drop-2",
+          "window": {
+            "start": "1999-10-21",
+            "end": "1999-10-27",
+            "days": 7,
+            "drop_day_start": 3,
+            "drop_day_end": 9
+          },
+          "value": 1250
+        },
+        {
+          "drop_id": "fixture-drop-1",
+          "window": {
+            "start": "1999-09-23",
+            "end": "1999-09-29",
+            "days": 7,
+            "drop_day_start": 3,
+            "drop_day_end": 9
+          },
+          "value": 1400
+        }
+      ],
+      "excluded": [
+        {
+          "drop_id": "fixture-drop-4",
+          "window": {
+            "start": "1999-12-27",
+            "end": "2000-01-02",
+            "days": 7,
+            "drop_day_start": 3,
+            "drop_day_end": 9
+          },
+          "reason": "window_crosses_next_drop",
+          "next_drop_id": "fixture-drop-5"
+        }
+      ],
+      "basis_method": "median",
+      "basis_value": 1300,
+      "delta_abs": 200,
+      "delta_pct": 0.1538,
+      "value_basis": "nominal",
+      "deflator": null,
+      "currency": "EGP",
+      "flags": [
+        {
+          "kind": "structural_window",
+          "offer_id": "fixture-offer",
+          "start": "1999-12-01",
+          "end": "2000-01-15",
+          "note": "Sitewide automatic discount"
+        }
+      ]
+    },
+    "basis": null,
+    "sample": null,
+    "state_detail": {
+      "contaminated": [
+        {
+          "kind": "structural_window",
+          "offer_id": "fixture-offer",
+          "start": "1999-12-01",
+          "end": "2000-01-15",
+          "note": "Sitewide automatic discount"
+        }
+      ]
+    },
+    "definition_version": 1
+  }
+}

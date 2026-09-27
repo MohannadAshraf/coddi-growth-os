@@ -1,0 +1,87 @@
+{
+  "fixture": "Synthetic envelope for state case \"no_basis\". Not a measurement.",
+  "definition": {
+    "metric_key": "aov",
+    "version": 1,
+    "label": "AOV",
+    "surface": "economics",
+    "unit": "EGP",
+    "confidence": "measured",
+    "formula": "Σ order total ÷ orders, non-excluded orders created in the period",
+    "session_basis": null,
+    "basis_label": null,
+    "grains": [
+      "week",
+      "drop",
+      "offer",
+      "location",
+      "cohort",
+      "segment"
+    ],
+    "direction": "higher_better",
+    "comparison_mode": "drop_day",
+    "treatment": null,
+    "source_tables": [
+      "fact_order"
+    ],
+    "effective_from": "1970-01-01",
+    "effective_to": null
+  },
+  "envelope": {
+    "value": 800,
+    "unit": "EGP",
+    "metric": "aov",
+    "state": "no_basis",
+    "secondary_states": [],
+    "confidence": "measured",
+    "coverage": null,
+    "comparison": null,
+    "basis": null,
+    "sample": null,
+    "state_detail": {
+      "no_basis": {
+        "mode": "drop_day",
+        "available": 1,
+        "required": 2,
+        "reason": "too_few_prior_drops",
+        "excluded": [
+          {
+            "drop_id": "fixture-drop-4",
+            "window": {
+              "start": "1999-12-27",
+              "end": "2000-01-02",
+              "days": 7,
+              "drop_day_start": 3,
+              "drop_day_end": 9
+            },
+            "reason": "window_crosses_next_drop",
+            "next_drop_id": "fixture-drop-5"
+          },
+          {
+            "drop_id": "fixture-drop-2",
+            "window": {
+              "start": "1999-10-21",
+              "end": "1999-10-27",
+              "days": 7,
+              "drop_day_start": 3,
+              "drop_day_end": 9
+            },
+            "reason": "value_missing"
+          },
+          {
+            "drop_id": "fixture-drop-1",
+            "window": {
+              "start": "1999-09-23",
+              "end": "1999-09-29",
+              "days": 7,
+              "drop_day_start": 3,
+              "drop_day_end": 9
+            },
+            "reason": "value_missing"
+          }
+        ]
+      }
+    },
+    "definition_version": 1
+  }
+}

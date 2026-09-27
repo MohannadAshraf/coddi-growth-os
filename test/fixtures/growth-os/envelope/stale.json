@@ -1,0 +1,121 @@
+{
+  "fixture": "Synthetic envelope for state case \"stale\". Not a measurement.",
+  "definition": {
+    "metric_key": "cvr_shopify",
+    "version": 1,
+    "label": "CVR",
+    "surface": "funnel",
+    "unit": "ratio",
+    "confidence": "measured",
+    "formula": "sessions_converted ÷ Shopify sessions",
+    "session_basis": "shopify",
+    "basis_label": "Shopify sessions",
+    "grains": [
+      "week",
+      "breakdown",
+      "offer"
+    ],
+    "direction": "higher_better",
+    "comparison_mode": "drop_day",
+    "treatment": null,
+    "source_tables": [
+      "fact_session_daily"
+    ],
+    "effective_from": "1970-01-01",
+    "effective_to": null
+  },
+  "envelope": {
+    "value": 0.02,
+    "unit": "ratio",
+    "metric": "cvr_shopify",
+    "state": "stale",
+    "secondary_states": [],
+    "confidence": "measured",
+    "coverage": null,
+    "comparison": {
+      "mode": "drop_day",
+      "drop_day": {
+        "start": 3,
+        "end": 9
+      },
+      "current": {
+        "drop_id": "fixture-drop-5",
+        "window": {
+          "start": "2000-01-02",
+          "end": "2000-01-08",
+          "days": 7,
+          "drop_day_start": 3,
+          "drop_day_end": 9
+        },
+        "value": 0.02
+      },
+      "against": [
+        {
+          "drop_id": "fixture-drop-3",
+          "window": {
+            "start": "1999-11-18",
+            "end": "1999-11-24",
+            "days": 7,
+            "drop_day_start": 3,
+            "drop_day_end": 9
+          },
+          "value": 0.021
+        },
+        {
+          "drop_id": "fixture-drop-2",
+          "window": {
+            "start": "1999-10-21",
+            "end": "1999-10-27",
+            "days": 7,
+            "drop_day_start": 3,
+            "drop_day_end": 9
+          },
+          "value": 0.019
+        },
+        {
+          "drop_id": "fixture-drop-1",
+          "window": {
+            "start": "1999-09-23",
+            "end": "1999-09-29",
+            "days": 7,
+            "drop_day_start": 3,
+            "drop_day_end": 9
+          },
+          "value": 0.02
+        }
+      ],
+      "excluded": [
+        {
+          "drop_id": "fixture-drop-4",
+          "window": {
+            "start": "1999-12-27",
+            "end": "2000-01-02",
+            "days": 7,
+            "drop_day_start": 3,
+            "drop_day_end": 9
+          },
+          "reason": "window_crosses_next_drop",
+          "next_drop_id": "fixture-drop-5"
+        }
+      ],
+      "basis_method": "median",
+      "basis_value": 0.02,
+      "delta_abs": 0,
+      "delta_pct": 0,
+      "value_basis": "nominal",
+      "deflator": null,
+      "currency": "EGP",
+      "flags": []
+    },
+    "basis": "Shopify sessions",
+    "sample": null,
+    "state_detail": {
+      "stale": {
+        "source_table": "fact_order",
+        "source_loaded_at": "2000-01-09T05:30:00Z",
+        "computed_at": "2000-01-09T01:00:00Z"
+      }
+    },
+    "definition_version": 1
+  }
+}

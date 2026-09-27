@@ -1,0 +1,1077 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Coddiwomple — Growth OS</title>
+<link rel="stylesheet" href="/growth.css">
+<script>
+  // Theme before first paint, so light mode never flashes dark.
+  try { if (localStorage.getItem("gs.theme") === "light") document.documentElement.setAttribute("data-theme", "light"); } catch (_) {}
+</script>
+</head>
+<body>
+<header class="gs-top">
+  <div class="gs-top-in">
+    <div class="gs-brand">
+      <span class="gs-brand-mark"></span>
+      <span class="gs-brand-name">Coddiwomple Growth OS</span>
+      <span class="gs-brand-sub" id="contract"></span>
+    </div>
+    <nav class="gs-nav" id="nav"></nav>
+    <div class="gs-controls">
+      <button class="gs-btn" id="prev" title="Previous week">‹</button>
+      <input id="week" type="date" step="7" aria-label="Week starting">
+      <button class="gs-btn" id="next" title="Next week">›</button>
+      <label class="gs-toggle"><input type="checkbox" id="opt-hide"> hide missing</label>
+      <label class="gs-toggle"><input type="checkbox" id="opt-suspect"> problems first</label>
+      <label class="gs-toggle"><input type="checkbox" id="opt-basis"> show basis</label>
+      <button class="gs-btn" id="theme" title="Light / dark">◐</button>
+      <button class="gs-btn" id="load-orders" title="Run tonight's order, session and Meta loads now">load data now</button><label class="gs-btn" for="yanet-file" title="Upload a Yanet export saved as CSV">upload returns<input type="file" id="yanet-file" accept=".csv,text/csv" hidden></label><span id="load-note" class="gs-load-note" hidden></span>
+      <a href="/weekly" class="gs-btn" style="text-decoration:none" title="The week in one page, for the team">weekly report</a>
+      <a href="/surfaces" class="gs-btn" style="text-decoration:none" title="Sync health, restock, the classic weekly review">classic view</a>
+    </div>
+  </div>
+</header>
+<main class="gs-main" id="app"><div class="gs-note">Loading…</div></main>
+<script src="/growth-envelope.js"></script>
+<script>
+(function () {
+  "use strict";
+  const API = "/api";
+  const G = window.GrowthEnvelope;
+  const { esc, human, dt, ts, win, formatParts, pctStr, statesOf, isMissing, accentOf } = G;
+  const app = document.getElementById("app");
+  const weekInput = document.getElementById("week");
+
+  const SURFACES = [
+    ["command", "Command"], ["economics", "Economics"], ["acquisition", "Acquisition"], ["creative", "Creative"],
+    ["funnel", "Funnel"], ["ads", "Ads"], ["drop", "Drop"], ["product", "Product"], ["offer", "Offer"], ["customer", "Customer"],
+    ["post_purchase", "Post-purchase"], ["forecast", "Forecast"], ["decisions", "Decisions"]
+  ];
+  document.getElementById("nav").innerHTML = SURFACES.map(([id, t]) => '<a href="#' + id + '">' + t + "</a>").join("");
+
+  // ---------------------------------------------------------------- reading modes
+  const store = {
+    get(k) { try { return localStorage.getItem(k); } catch (_) { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch (_) {} }
+  };
+  const opts = { hide: store.get("gs.hide") === "1", suspect: store.get("gs.suspect") === "1", basis: store.get("gs.basis") === "1" };
+  for (const [id, key] of [["opt-hide", "hide"], ["opt-suspect", "suspect"], ["opt-basis", "basis"]]) {
+    const el = document.getElementById(id);
+    el.checked = opts[key];
+    el.onchange = () => { opts[key] = el.checked; store.set("gs." + key, el.checked ? "1" : "0"); if (last) render(last, lastEntity); };
+  }
+  document.getElementById("theme").onclick = () => {
+    const light = document.documentElement.getAttribute("data-theme") !== "light";
+    if (light) document.documentElement.setAttribute("data-theme", "light");
+    else document.documentElement.removeAttribute("data-theme");
+    store.set("gs.theme", light ? "light" : "dark");
+  };
+
+  let last = null;
+  let lastEntity = null;
+  let defs = {};
+
+  // ---------------------------------------------------------------- helpers
+  const rank = (e) => {
+    const s = statesOf(e);
+    if (s.includes("suspect")) return 0;
+    if (s.includes("contaminated")) return 1;
+    if (s.includes("stale") || s.includes("partial")) return 2;
+    if (s.includes("missing")) return 4;
+    return 3;
+  };
+  function prep(list) {
+    let a = (list || []).filter(Boolean);
+    if (opts.hide) a = a.filter((e) => !isMissing(e));
+    if (opts.suspect) a = a.slice().sort((x, y) => rank(x) - rank(y));
+    return a;
+  }
+  const tile = (e, extra) => G.renderEnvelope(e, defs[e.metric], Object.assign({ open: opts.basis }, extra || {}));
+  function grid(list, cls) {
+    const shown = prep(list);
+    const hidden = (list || []).length - shown.length;
+    if (!shown.length) return '<div class="gs-note">' + (hidden ? hidden + " missing metric(s) hidden." : "Nothing here.") + "</div>";
+    return '<div class="gs-grid ' + (cls || "") + '">' + shown.map(tile).join("") + "</div>" +
+      (hidden ? '<div class="gs-note">' + hidden + " missing metric(s) hidden.</div>" : "");
+  }
+  function stack(list, extra) {
+    const shown = prep(list);
+    const hidden = (list || []).length - shown.length;
+    return '<div class="gs-stack">' + shown.map((e) => tile(e, extra)).join("") + "</div>" + (hidden ? '<div class="gs-note">' + hidden + " missing hidden.</div>" : "");
+  }
+  const reasonOf = (e) => (e.state_detail && e.state_detail.missing && e.state_detail.missing.reason) || "";
+  const count = (list) => {
+    const l = list || [];
+    const miss = l.filter(isMissing).length;
+    const notLoaded = l.filter((e) => isMissing(e) && reasonOf(e) === "not_loaded").length;
+    const unwired = l.filter((e) => isMissing(e) && reasonOf(e) === "unwired").length;
+    return { miss, live: l.length - miss, total: l.length, notLoaded, unwired, otherMissing: miss - notLoaded - unwired };
+  };
+  // "3 awaiting a load · 5 not wired up" — a wired metric waiting for data is not
+  // the same statement as one nobody has built yet.
+  function missingPhrase(c) {
+    const parts = [];
+    if (c.notLoaded) parts.push(c.notLoaded + " awaiting a load");
+    if (c.unwired) parts.push(c.unwired + " not wired up");
+    if (c.otherMissing) parts.push(c.otherMissing + " without data");
+    return parts.join(" · ");
+  }
+  const pick = (list, m) => (list || []).find((e) => e.metric === m) || null;
+  const label = (e) => (defs[e.metric] && defs[e.metric].label) || human(e.metric);
+  const flat = (surface) => Object.values(surface.sections).flat();
+  const val = (e) => { const f = formatParts(e.value, e.unit); return f.num + (f.suffix ? (f.suffix === "%" || f.suffix === "×" ? f.suffix : " " + f.suffix) : ""); };
+
+  function head(num, id, title, src) {
+    return '<div class="gs-h"><span class="gs-h-num">' + String(num).padStart(2, "0") + "</span><h2>" + esc(title) + '</h2><span class="gs-h-src">' + esc(src) + "</span></div>";
+  }
+  const lead = (text, color) => '<p class="gs-lead" style="--lead:' + (color || "var(--ghost)") + '">' + text + "</p>";
+  const sub = (t, n) => '<div class="gs-sub"><span class="gs-sub-t">' + esc(t) + "</span>" + (n ? '<span class="gs-sub-n">' + esc(n) + "</span>" : "") + "</div>";
+
+  // A lead sentence is never invented: it states what is readable, what is
+  // flagged, and what is still unwired — in that order.
+  function flaggedSentence(list) {
+    const sus = (list || []).filter((e) => statesOf(e).includes("suspect"));
+    if (!sus.length) return "";
+    const f = sus[0].state_detail.suspect[0] || {};
+    return " " + sus.map(label).join(", ") + (sus.length > 1 ? " are" : " is") + " under investigation" + (f.break_date ? " since " + dt(f.break_date) : "") + " — treat movement there as a possible measurement break.";
+  }
+  function genericLead(list, noun) {
+    const c = count(list);
+    if (!c.total) return "No metrics in this section.";
+    if (!c.live && c.unwired === c.total) return "Nothing readable yet: all " + c.total + " " + noun + " metrics are defined but not wired up. They fill in layer by layer.";
+    if (!c.live) return "Nothing readable yet for this week: " + missingPhrase(c) + ".";
+    return c.live + " of " + c.total + " " + noun + " metrics readable" + (c.miss ? " — " + missingPhrase(c) : "") + "." + flaggedSentence(list);
+  }
+
+  // What is actually missing, by name. Every source was called "orders" before, so a
+  // week with sessions still loading read as if no order had been placed.
+  const SOURCE_WORDS = [
+    [/GA4/i, "GA4"],
+    [/session/i, "Shopify sessions"],
+    [/outbound click|impression|video|link click/i, "Meta ad data"],
+    [/yanet/i, "the Yanet return file"],
+    [/stock|snapshot/i, "the stock snapshot"],
+    [/units sold|shopify units/i, "order lines"]
+  ];
+  function notLoadedSentence(list) {
+    const waiting = new Set();
+    for (const e of list || []) {
+      if (!isMissing(e) || (e.state_detail.missing || {}).reason !== "not_loaded") continue;
+      const basis = (defs[e.metric] && (defs[e.metric].basis_label || defs[e.metric].session_basis)) || "";
+      const hit = SOURCE_WORDS.find(([re]) => re.test(basis));
+      waiting.add(hit ? hit[1] : "orders");
+    }
+    if (!waiting.size) return "";
+    const names = [...waiting];
+    const list2 = names.length === 1 ? names[0] : names.slice(0, -1).join(", ") + " and " + names[names.length - 1];
+    return "Waiting on " + list2 + " for this week — press “load data now”, or tonight's 23:50 run fills it.";
+  }
+
+  // ---------------------------------------------------------------- command
+  function renderCommand(d, n) {
+    const S = d.surfaces.command;
+    const dc = d.drop_context;
+    const line1 = S.sections.line1;
+    const cells = line1.map((e) => {
+      let note = "";
+      if (e.metric === "days_since_drop" && dc.drop) note = "since " + dt(dc.drop.drop_date);
+      else if (e.metric === "days_to_next_drop") note = dc.next_drop ? (dc.next_drop.label || dc.next_drop.drop_id) + " · " + dt(dc.next_drop.drop_date) : "no next drop recorded";
+      else if (dc.windows) {
+        const w = dc.windows.cumulative;
+        note = "cumulative · drop-day " + w.current.window.drop_day_start + "–" + w.current.window.drop_day_end + " vs " + w.against.length + " prior drops";
+      }
+      const f = formatParts(e.value, e.unit);
+      return '<div class="gs-cell" style="--accent:' + accentOf(statesOf(e)) + '"><span class="gs-cell-k">' + esc(label(e)) + "</span>" +
+        (isMissing(e) ? '<span class="gs-cell-miss"><span></span>no data yet</span>'
+          : '<span class="gs-cell-v"><span class="n">' + esc(f.num) + '</span><span class="s">' + esc(f.suffix) + "</span></span>") +
+        '<span class="gs-cell-note">' + esc(note) + "</span></div>";
+    }).join("");
+    const drop = dc.drop
+      ? '<div class="gs-cell gs-cell-drop"><span class="gs-cell-k">drop</span><span class="gs-cell-name">' + esc(dc.drop.label || dc.drop.drop_id) + '</span><span class="gs-cell-note">' + esc(dt(dc.drop.drop_date) + " · " + dc.drop.drop_id) + "</span></div>"
+      : '<div class="gs-cell gs-cell-drop"><span class="gs-cell-k">drop</span><span class="gs-cell-name">No drop recorded</span><span class="gs-cell-note">on or before this week</span></div>';
+
+    const pulse = S.sections.pulse;
+    const pc = count(pulse);
+    let h = "";
+    const ns = pick(pulse, "net_sales_attributed");
+    if (ns && !isMissing(ns) && ns.comparison && typeof ns.comparison.delta_pct === "number") {
+      h += "Net sales " + esc(val(ns)) + ", " + pctStr(ns.comparison.delta_pct) + " " + esc(G.comparisonSummary(ns.comparison)) + ". ";
+    } else if (ns && !isMissing(ns)) {
+      h += "Net sales " + esc(val(ns)) + ", no comparison basis. ";
+    }
+    h += esc(flaggedSentence(pulse)).trim() + (flaggedSentence(pulse) ? " " : "");
+    if (pc.notLoaded) h += esc(notLoadedSentence(pulse)) + " ";
+    if (pc.miss) h += pc.live + " of " + pc.total + " pulse metrics readable: " + missingPhrase(pc) + ".";
+    if (dc.windows && dc.windows.period.phase === "floor") {
+      const f = dc.windows.floor;
+      h += " Floor phase (drop-day " + f.phase_start_drop_day + "+): compared against " + f.pool.length + " floor window(s)" +
+        (f.scope === "cross_season" ? " from the previous season, flagged" : " from this season") + (f.sufficient ? "." : " — too few, so deltas show as no basis.");
+    } else if (dc.windows && !dc.windows.period.sufficient) {
+      const p = dc.windows.period;
+      h += " Drop-day " + p.current.window.drop_day_start + "–" + p.current.window.drop_day_end + " has " + p.against.length + " usable prior drop(s)" + (p.excluded.length ? " (" + p.excluded.length + " excluded: their windows run into the next drop)" : "") + ", so deltas show as no basis.";
+    }
+
+    const alerts = S.lists.alerts;
+    const cont = S.lists.continuity;
+    const alertsBody = alerts.state === "ok" && alerts.items.length
+      ? '<div class="gs-list-rows">' + alerts.items.map((a) => '<div class="gs-list-row"><span class="t">' + esc(a.text || a.sentence || "") + '</span><span class="m">' + esc(a.egp_at_stake || "") + "</span></div>").join("") + "</div>"
+      : '<div class="gs-list-empty">Alerts are ' + esc(alerts.state === "ok" ? "clear this week" : human(alerts.reason)) + (alerts.state === "ok" ? "." : " — nothing is ranked yet. This panel stays empty rather than showing a reassuring zero.") + "</div>";
+    const contBody = cont.items.length
+      ? '<div class="gs-list-rows">' + cont.items.map((f) => '<div class="gs-list-row"><span class="t">' + esc(((defs[f.metric] && defs[f.metric].label) || human(f.metric)) + " — possible " + human(f.signal) + " break at " + dt(f.break_date) + ", " + f.grain + " grain. Comparisons that span it are unsafe.") + '</span><span class="m">' + esc("flag " + f.flag_id + " · " + ts(f.detected_at)) + "</span></div>").join("") + "</div>"
+      : '<div class="gs-list-empty">' + (cont.state === "ok" ? "No open continuity flags." : "The continuity monitor has " + esc(human(cont.reason)) + " — no break detection has happened yet, which is not the same as no breaks.") + "</div>";
+
+    const excl = d.exclusions.map((x) => [x.orders, x.value, x.units]).flat();
+    return '<section class="gs-section" id="command">' + head(n, "command", "Command", "surfaces.command") +
+      '<div class="gs-strip">' + drop + cells + "</div>" +
+      lead(h, "var(--st-ok)") +
+      sub("Pulse", pc.live + " readable" + (pc.miss ? " · " + missingPhrase(pc) : "")) + grid(pulse) +
+      '<div class="gs-cols">' +
+        '<div class="gs-list gs-list-alerts"><div class="gs-list-h"><span class="gs-list-t">Alerts</span><span class="gs-list-s">money at stake · ranked by EGP</span></div>' + alertsBody + "</div>" +
+        '<div class="gs-list gs-list-continuity"><div class="gs-list-h"><span class="gs-list-t">Continuity flags</span><span class="gs-list-s">possible data breaks' + (cont.last_run_at ? " · last run " + esc(ts(cont.last_run_at)) : "") + "</span></div>" + contBody + "</div>" +
+      "</div>" +
+      sub("Exclusions", "what each rule removed · " + d.exclusions.map((x) => x.rule_id).join(", ")) + grid(excl, "gs-grid-narrow") +
+      "</section>";
+  }
+
+  // ---------------------------------------------------------------- economics
+  const LEVELS = ["gross_sales", "net_sales_attributed", "delivered_revenue", "gross_profit", "contribution_margin"];
+  const SHARE_OF = {
+    discounts: "discounts_share_of_gross", reversals_attributed: "reversals_share_of_gross", net_sales_attributed: "net_sales_share_of_gross",
+    cogs_delivered: "cogs_share_of_gross", gross_profit: "gross_profit_share_of_gross", ad_spend: "ad_spend_share_of_gross",
+    fulfilment_cost_outbound: "fulfilment_share_of_gross", cod_collection_fees: "cod_fees_share_of_gross",
+    rto_shipping_waste: "rto_waste_share_of_gross", contribution_margin: "contribution_share_of_gross"
+  };
+  function renderEconomics(d, n) {
+    const ec = d.surfaces.economics.sections;
+    const wf = ec.waterfall;
+    const vals = wf.filter((e) => !isMissing(e)).map((e) => Math.abs(e.value));
+    const max = vals.length ? Math.max.apply(null, vals) : 1;
+    const bars = wf.map((e) => {
+      const has = !isMissing(e);
+      const h = has ? Math.max(1.5, (Math.abs(e.value) / max) * 100) : 100;
+      const level = LEVELS.includes(e.metric);
+      const share = pick(ec.waterfall_share, SHARE_OF[e.metric]);
+      const accent = has ? accentOf(statesOf(e)) : "var(--rule)";
+      const fill = has ? (level ? accent : "var(--spark)") : "var(--page)";
+      const f = formatParts(e.value, e.unit);
+      return '<div class="gs-wf-step">' +
+        '<div class="gs-wf-v">' + (has ? '<span style="color:' + (e.confidence === "measured" ? "var(--ink)" : "var(--ink-dim)") + '">' + esc(f.num) + "</span>" : '<span class="slot"></span>') + "</div>" +
+        '<svg class="gs-wf-bar" viewBox="0 0 10 100" preserveAspectRatio="none" aria-hidden="true"><rect x="0" y="' + (100 - h).toFixed(2) + '" width="10" height="' + h.toFixed(2) + '" fill="' + fill + '"' + (has ? "" : ' stroke="var(--ghost)" stroke-dasharray="3 3" stroke-width="0.6" vector-effect="non-scaling-stroke"') + "></rect></svg>" +
+        '<div class="gs-wf-foot" style="--accent:' + accent + '"><span class="l">' + esc(label(e)) + "</span><span>" + (level ? "level" : "deduction") + (e.confidence === "modelled" ? " · modelled" : "") + "</span>" +
+        '<span class="sh' + (share && !isMissing(share) ? " has" : "") + '">' + (share && !isMissing(share) ? esc(formatParts(share.value, "ratio").num) + "% of gross" : "share —") + "</span></div></div>";
+    }).join("");
+
+    const wc = count(wf);
+    const gross = pick(wf, "gross_sales");
+    const contrib = pick(wf, "contribution_margin");
+    const cac = pick(ec.ratios, "contribution_cac_ratio");
+    let h = "";
+    if (contrib && !isMissing(contrib)) h += "Contribution margin " + esc(val(contrib)) + (contrib.confidence === "modelled" ? " (modelled)" : "") + (gross && !isMissing(gross) ? " on gross sales of " + esc(val(gross)) : "") + ". ";
+    if (cac && !isMissing(cac) && cac.value < 1) h += "Contribution ÷ CAC is " + esc(val(cac)) + ": incremental orders are losing money. ";
+    h += wc.miss ? wc.miss + " of " + wc.total + " waterfall steps are missing, so the leak cannot yet be located between gross sales and contribution." : "Every waterfall step is readable.";
+
+    const losing = cac && !isMissing(cac) && cac.value < 1;
+    const band = '<div class="gs-band' + (losing ? " gs-band-live" : "") + '"><span class="x">&lt; 1</span><span class="t">' +
+      (losing ? "Contribution ÷ CAC is " + esc(val(cac)) + ". Each incremental order is losing money." : "Below 1.00 this band turns solid red: incremental orders lose money. It is the only inverted element on the page.") + "</span></div>";
+    const merKeys = ["blended_mer", "delivered_mer", "mer_gap"];
+    const mer = merKeys.map((k) => pick(ec.ratios, k)).filter(Boolean);
+    const rest = ec.ratios.filter((e) => merKeys.concat(["contribution_cac_ratio"]).indexOf(e.metric) < 0).concat(ec.volume, ec.booked_vs_attributed, ec.data_health);
+    return '<section class="gs-section" id="economics">' + head(n, "economics", "Economics — gross sales to contribution", "surfaces.economics") +
+      lead(h, "var(--st-contaminated)") +
+      '<div class="gs-wf"><div class="gs-wf-in">' + bars + "</div></div>" +
+      '<div class="gs-cols">' +
+        '<div class="gs-stack">' + sub("Contribution ÷ CAC — the line that decides whether to keep spending") + (cac ? tile(cac) : "") + band + "</div>" +
+        '<div class="gs-stack">' + sub("Blended MER & delivered MER — always adjacent") + '<div class="gs-grid" style="grid-template-columns:repeat(auto-fit,minmax(190px,1fr))">' + mer.map(tile).join("") + "</div>" +
+        '<div class="gs-note">The gap between them is the RTO and refund tax. It only reads as a gap when the two sit side by side.</div></div>' +
+      "</div>" +
+      sub("Ratios & volume", count(rest).live + " readable" + (count(rest).miss ? " · " + missingPhrase(count(rest)) : "")) + grid(rest) +
+      "</section>";
+  }
+
+  // ---------------------------------------------------------------- acquisition / creative
+  function renderAcquisition(d, n) {
+    const s = d.surfaces.acquisition.sections;
+    const all = flat(d.surfaces.acquisition);
+    return '<section class="gs-section" id="acquisition">' + head(n, "acquisition", "Acquisition — buying demand or creating it", "surfaces.acquisition") +
+      lead(esc(genericLead(all, "acquisition"))) +
+      '<div class="gs-cols">' +
+        '<div class="gs-panel"><div class="gs-panel-h"><span class="gs-panel-t">Shopify-measured</span><span class="gs-panel-s">orders and money · truth</span><span class="gs-panel-c">' + count(s.shopify_measured).miss + "/" + s.shopify_measured.length + " missing</span></div>" + stack(s.shopify_measured) + "</div>" +
+        '<div class="gs-panel gs-panel-dotted"><div class="gs-panel-h"><span class="gs-panel-t">Platform-reported</span><span class="gs-panel-s">the network’s own claim · directional</span><span class="gs-panel-c">' + count(s.platform_reported).miss + "/" + s.platform_reported.length + " missing</span></div>" + stack(s.platform_reported, { footnote: false }) + "</div>" +
+      "</div>" +
+      sub("Demand signals", "is demand growing, or is spend growing") + grid(s.demand) +
+      "</section>";
+  }
+
+  function renderCreative(d, n) {
+    const s = d.surfaces.creative.sections;
+    return '<section class="gs-section" id="creative">' + head(n, "creative", "Creative — reliable block and directional block", "surfaces.creative") +
+      lead(esc(genericLead(flat(d.surfaces.creative), "creative"))) +
+      '<div class="gs-cols">' +
+        '<div class="gs-panel"><div class="gs-panel-h"><span class="gs-panel-t">Block A</span><span class="gs-panel-s">impression-denominated · reliable · platform-reported</span></div>' + stack(s.block_a_impressions, { footnote: false }) + "</div>" +
+        '<div class="gs-panel gs-panel-dotted"><div class="gs-panel-h"><span class="gs-panel-t">Block B</span><span class="gs-panel-s">conversion-denominated · directional only · platform-reported</span></div>' + stack(s.block_b_conversions, { footnote: false }) + "</div>" +
+      "</div>" +
+      sub("Coverage") + grid(s.coverage, "gs-grid-narrow") +
+      "</section>";
+  }
+
+  // ---------------------------------------------------------------- funnel
+  // ---------------------------------------------------------------- cohorts
+  const COHORT_METRICS = ["cohort_size", "repeat_rate_30d", "repeat_rate_60d", "repeat_rate_90d", "repeat_rate_180d", "orders_per_customer", "time_to_second_purchase", "ltv_to_date"];
+  const COHORT_COLS = [
+    ["repeat_rate_30d", "30d"], ["repeat_rate_60d", "60d"], ["repeat_rate_90d", "90d"], ["repeat_rate_180d", "180d"]
+  ];
+  function cohortTable(res) {
+    if (!res) return '<div class="gs-list-empty">Not loaded.</div>';
+    const rows = res.rows.filter((r) => {
+      const size = r.metrics.find((e) => e.metric === "cohort_size");
+      return size && !isMissing(size) && size.value > 0;
+    });
+    if (!rows.length) return '<div class="gs-list-empty">No cohorts yet — a cohort needs customers whose first order is inside the loaded history.</div>';
+    let h = '<div class="gs-table"><div class="gs-table-in" style="grid-template-columns:minmax(0,.9fr) minmax(0,.7fr) repeat(4, minmax(0,.55fr)) minmax(0,.7fr) minmax(0,.7fr) minmax(0,.8fr)">' +
+      '<div class="gs-th">acquired</div><div class="gs-th r">customers<br><span class="u">n</span></div>' +
+      COHORT_COLS.map(([, lab]) => '<div class="gs-th r">' + lab + "</div>").join("") +
+      '<div class="gs-th r">orders<br><span class="u">per customer</span></div><div class="gs-th r">to 2nd<br><span class="u">median days</span></div><div class="gs-th r">spend<br><span class="u">per customer</span></div>';
+    let pre = 0;
+    for (const r of rows) {
+      const m = Object.fromEntries(r.metrics.map((e) => [e.metric, e]));
+      pre += Number(r.attributes.pre_window_customers) || 0;
+      const cell = (e, unit) => {
+        if (!e || isMissing(e)) {
+          // A window that has not elapsed is blank on purpose, and says why on hover.
+          const why = e && e.state_detail.missing ? human(e.state_detail.missing.reason) : "no data";
+          return '<div class="gs-td r" title="' + esc(why) + '"><span class="slot"></span></div>';
+        }
+        const f = formatParts(e.value, unit || e.unit);
+        const thin = e.sample && e.sample.n < 25;
+        // Each row's median is taken inside its own elapsed window: name it on hover.
+        const title = e.sample ? "n " + e.sample.n.toLocaleString("en-US") + " " + e.sample.of : "";
+        return '<div class="gs-td r"' + (title ? ' title="' + esc(title) + '"' : "") + '><span class="' + (thin ? "dim" : "") + '">' + esc(f.num) + "</span>" +
+          (unit === "ratio" ? '<span class="n">%</span>' : "") + "</div>";
+      };
+      h += '<div class="gs-td gs-td-ent" style="--accent:' + accentOf(statesOf(m.repeat_rate_30d || m.cohort_size)) + '">' + esc(r.entity_id) + "</div>" +
+        '<div class="gs-td r">' + (isMissing(m.cohort_size) ? '<span class="slot"></span>' : m.cohort_size.value.toLocaleString("en-US")) + "</div>" +
+        COHORT_COLS.map(([key]) => cell(m[key], "ratio")).join("") +
+        cell(m.orders_per_customer, "decimal") + cell(m.time_to_second_purchase, "days") + cell(m.ltv_to_date, "EGP");
+    }
+    h += "</div></div>";
+    h += '<div class="gs-note">A blank repeat rate is a window that has not finished yet, not a zero: the 90-day column can only be read once every customer in that row has had 90 days. Each rate counts only the customers past its window, and the median days to a second order is measured inside the longest window the whole row has lived through — so a young cohort reads blank rather than fast.' +
+      (pre ? " " + pre.toLocaleString("en-US") + " customer(s) whose first order predates the loaded history are excluded from every cohort — they were acquired before this window and would flatter it." : "") + "</div>";
+    return h;
+  }
+
+  function renderCustomer(d, n, cohorts) {
+    const surface = d.surfaces.customer;
+    let body = "";
+    for (const [section, list] of Object.entries(surface.sections)) body += sub(human(section)) + grid(list);
+    return '<section class="gs-section" id="customer">' + head(n, "customer", "Customer — who came back, and when", "surfaces.customer · /growth/entity") +
+      lead(esc(genericLead(flat(surface), "customer"))) + body +
+      sub("Repeat purchase by acquisition cohort", "the month a customer's first order landed · rows under 25 customers past the window are dim") +
+      cohortTable(cohorts) + "</section>";
+  }
+
+  // ---------------------------------------------------------------- ads
+  // The chain, in the order an ad is actually read: is it cheap to put in front of
+  // people, do they react, what does a click cost, do they arrive, and does any of
+  // it become money. Each stage is judged against the store's own ads, never a
+  // number typed in here, and only where that stage has the evidence to be read.
+  const AD_SPAN_WEEKS = 2;
+  const AD_CHAIN = [
+    ["cpm", "CPM", "cost to be seen"],
+    ["outbound_ctr", "CTR", "do they react"],
+    ["cpc_outbound", "CPC", "cost of a click"],
+    ["land_rate", "land", "do they arrive"],
+    ["platform_roas", "ROAS", "Meta's own count, at checkout"],
+    ["delivered_roas_attributed", "delivered", "our own orders, money that arrived"]
+  ];
+  const AD_METRICS = ["ad_spend", "impressions", "cpm", "outbound_ctr", "cpc_outbound", "land_rate", "platform_purchases",
+    "platform_roas", "cpa_platform", "attributed_orders", "delivered_roas_attributed", "cpm_trend", "ctr_trend"];
+  // Whether the ad is decaying, shown beside the level: the ad against itself, the
+  // window's later half against its earlier one.
+  const AD_TREND_COLS = [["cpm_trend", "CPM"], ["ctr_trend", "CTR"]];
+
+  // Worst quartile in the direction that hurts. Neutral metrics are never graded:
+  // spend is not good or bad, it is the size of the bet.
+  function adGrade(env, baseline) {
+    if (!env || isMissing(env) || !baseline || !baseline.direction || baseline.direction === "neutral") return "";
+    if (baseline.direction === "lower_better") {
+      if (env.value > baseline.p75) return "bad";
+      if (env.value <= baseline.p25) return "good";
+    } else {
+      if (env.value < baseline.p25) return "bad";
+      if (env.value >= baseline.p75) return "good";
+    }
+    return "";
+  }
+
+  // The verdict is the first stage that fails, because that is the thing to fix.
+  // An ad that delivers cheaply, earns clicks and then sells nothing is not an ad
+  // problem, and killing it would be the wrong move.
+  function adVerdict(metrics, baselines) {
+    for (const [key, label] of AD_CHAIN) {
+      // Delivered ROAS is a floor built on the orders that carried the ad id, so a
+      // low one can mean poor attribution rather than a poor ad. It informs, it
+      // does not convict.
+      if (key === "delivered_roas_attributed") continue;
+      const env = metrics[key];
+      if (!env) continue;
+      if (isMissing(env)) {
+        const reason = env.state_detail.missing ? env.state_detail.missing.reason : "";
+        if (String(reason).startsWith("below_")) return { text: "too early at " + label.toLowerCase(), tone: "thin" };
+        continue;
+      }
+      if (adGrade(env, baselines[key]) === "bad") return { text: label + " is worst quartile", tone: "bad" };
+    }
+    // Nothing in the worst quartile, but decaying on both halves is still the thing
+    // to act on: this is the ad that was fine last week.
+    const cpmUp = metrics.cpm_trend && !isMissing(metrics.cpm_trend) && metrics.cpm_trend.value > 0.15;
+    const ctrDown = metrics.ctr_trend && !isMissing(metrics.ctr_trend) && metrics.ctr_trend.value < -0.15;
+    if (cpmUp && ctrDown) return { text: "tiring: dearer and less clicked", tone: "bad" };
+    const converts = metrics.platform_roas;
+    if (converts && !isMissing(converts) && adGrade(converts, baselines.platform_roas) === "good") return { text: "clears every stage", tone: "good" };
+    return { text: "no stage in the worst quartile", tone: "" };
+  }
+
+  function adTable(res) {
+    if (!res) return '<div class="gs-list-empty">Not loaded.</div>';
+    const baselines = res.baselines || {};
+    const rows = res.rows.map((r) => ({
+      id: (r.attributes && r.attributes.ad_name) || r.entity_id,
+      status: (r.attributes && r.attributes.effective_status) || "",
+      m: Object.fromEntries(r.metrics.map((e) => [e.metric, e]))
+    })).filter((r) => r.m.ad_spend && !isMissing(r.m.ad_spend) && r.m.ad_spend.value > 0);
+    if (!rows.length) return '<div class="gs-list-empty">No ad delivered in these weeks.</div>';
+    let h = '<div class="gs-table"><div class="gs-table-in" style="grid-template-columns:minmax(0,1.35fr) minmax(0,.6fr) repeat(6, minmax(0,.54fr)) repeat(2, minmax(0,.5fr)) minmax(0,.5fr) minmax(0,1.05fr)">' +
+      '<div class="gs-th">ad</div><div class="gs-th r">spend</div>' +
+      AD_CHAIN.map(([, label, note]) => '<div class="gs-th r" title="' + esc(note) + '">' + esc(label) + "</div>").join("") +
+      AD_TREND_COLS.map(([, label]) => '<div class="gs-th r" title="the later half of the window against the earlier one">' + esc(label) + '<br><span class="u">trend</span></div>').join("") +
+      '<div class="gs-th r">purch<br><span class="u">Meta</span></div><div class="gs-th">first thing to fix</div>';
+    for (const r of rows.slice(0, 20)) {
+      const verdict = adVerdict(r.m, baselines);
+      const cell = (key) => {
+        const env = r.m[key];
+        if (!env) return '<div class="gs-td r"><span class="slot"></span></div>';
+        if (isMissing(env)) {
+          const reason = env.state_detail.missing ? human(env.state_detail.missing.reason) : "no data";
+          const code = String(env.state_detail.missing && env.state_detail.missing.reason);
+          const short = code.startsWith("below_") ? "thin" : code === "ad_links_not_tagged" ? "untagged" : "—";
+          return '<div class="gs-td r" title="' + esc(code === "ad_links_not_tagged"
+            ? "This ad's links do not carry the ad id, so its own orders cannot be found. Turn on URL parameters in Meta."
+            : reason) + '"><span class="n">' + short + "</span></div>";
+        }
+        const f = formatParts(env.value, env.unit);
+        const grade = adGrade(env, baselines[key]);
+        const b = baselines[key];
+        let title = b ? "median " + formatParts(b.p50, env.unit).num + " · this ad " + f.num : "";
+        if (key === "delivered_roas_attributed") {
+          const orders = r.m.attributed_orders && !isMissing(r.m.attributed_orders) ? r.m.attributed_orders.value : null;
+          const share = env.coverage === null || env.coverage === undefined ? null : Math.round(env.coverage * 100);
+          title = "from " + (orders === null ? "the" : orders) + " order(s) that carried this ad id" +
+            (share === null ? "" : " — " + share + "% of what Meta counts") + ". A floor, not a total.";
+        }
+        return '<div class="gs-td r gs-ad-' + (grade || "flat") + '" title="' + esc(title) + '">' + esc(f.num) +
+          (env.unit === "ratio" ? '<span class="n">%</span>' : "") + "</div>";
+      };
+      const trendCell = (key) => {
+        const env = r.m[key];
+        if (!env || isMissing(env)) return '<div class="gs-td r"><span class="n">—</span></div>';
+        const direction = env.value > 0 ? "up" : env.value < 0 ? "down" : "flat";
+        const good = (key === "cpm_trend" && env.value < -0.05) || (key === "ctr_trend" && env.value > 0.05);
+        const bad = (key === "cpm_trend" && env.value > 0.15) || (key === "ctr_trend" && env.value < -0.15);
+        return '<div class="gs-td r gs-ad-' + (bad ? "bad" : good ? "good" : "flat") + '" title="' + esc("n " + env.sample.n.toLocaleString("en-US") + " " + env.sample.of) + '">' +
+          (direction === "up" ? "+" : "") + Math.round(env.value * 100) + '<span class="n">%</span></div>';
+      };
+      h += '<div class="gs-td gs-td-ent" style="--accent:' + accentOf(statesOf(r.m.ad_spend)) + '" title="' + esc(r.id) + '">' + esc(r.id) +
+          (r.status && r.status !== "ACTIVE" ? ' <span class="n">' + esc(r.status.toLowerCase().replace(/_/g, " ")) + "</span>" : "") + "</div>" +
+        '<div class="gs-td r">' + esc(formatParts(r.m.ad_spend.value, "EGP").num) + "</div>" +
+        AD_CHAIN.map(([key]) => cell(key)).join("") +
+        AD_TREND_COLS.map(([key]) => trendCell(key)).join("") +
+        '<div class="gs-td r"><span class="n">' + (isMissing(r.m.platform_purchases) ? "—" : r.m.platform_purchases.value) + "</span></div>" +
+        '<div class="gs-td"><span class="gs-verdict gs-verdict-' + (verdict.tone || "flat") + '">' + esc(verdict.text) + "</span></div>";
+    }
+    h += "</div></div>";
+    const line = (key, label) => {
+      const b = baselines[key];
+      if (!b) return "";
+      const unit = key === "outbound_ctr" || key === "land_rate" ? "ratio" : key === "platform_roas" ? "multiple" : "EGP";
+      return label + " " + formatParts(b.p25, unit).num + " / " + formatParts(b.p50, unit).num + " / " + formatParts(b.p75, unit).num;
+    };
+    h += '<div class="gs-note">Graded against these ads, not against a number typed into the code: quartiles (weak / median / strong) are ' +
+      [line("cpm", "CPM"), line("outbound_ctr", "CTR"), line("cpc_outbound", "CPC"), line("platform_roas", "ROAS")].filter(Boolean).join(" · ") +
+      '. A cell reads "thin" until its own stage has the evidence to be read — ' + (res.evidence_gates
+        ? res.evidence_gates.impressions.toLocaleString("en-US") + " impressions for CPM and CTR, " + res.evidence_gates.clicks + " clicks for CPC and landing, " + res.evidence_gates.purchases + " purchases for ROAS"
+        : "") + '. The two money columns are never blended: ROAS is Meta’s own count at checkout, which in a COD business includes money that never arrives; delivered is what our orders say actually arrived, and counts only the orders that carried the ad id — a floor, so it reads low by construction.</div>';
+    return h;
+  }
+
+  // Creative rollups, read off the ad names ("Product | Shot | Format | Version").
+  // One ad is an anecdote; a format or a shot with a dozen ads behind it is a
+  // pattern worth acting on.
+  const CREATIVE_CUTS = [
+    ["format", "By format", "video, static or carousel"],
+    ["angle", "By shot", "how the product is shown"]
+  ];
+  const CREATIVE_METRICS = ["ad_spend", "cpm", "outbound_ctr", "cpc_outbound", "platform_purchases", "platform_roas"];
+  function creativeTable(title, note, res) {
+    let h = '<div class="gs-panel"><div class="gs-panel-h"><span class="gs-panel-t">' + esc(title) + '</span><span class="gs-panel-s">' + esc(note) + "</span></div>";
+    if (!res) return h + '<div class="gs-list-empty">Not loaded.</div></div>';
+    const baselines = res.baselines || {};
+    const rows = res.rows.map((r) => ({ id: r.entity_id, ads: (r.attributes && r.attributes.ads) || null, m: Object.fromEntries(r.metrics.map((e) => [e.metric, e])) }))
+      .filter((r) => r.m.ad_spend && !isMissing(r.m.ad_spend) && r.m.ad_spend.value > 0);
+    if (!rows.length) return h + '<div class="gs-list-empty">Nothing delivered in these weeks.</div></div>';
+    h += '<div class="gs-table"><div class="gs-table-in" style="grid-template-columns:minmax(0,1.3fr) minmax(0,.4fr) minmax(0,.75fr) repeat(4, minmax(0,.55fr))">' +
+      '<div class="gs-th">' + esc(title.replace(/^By /, "")) + '</div><div class="gs-th r">ads</div><div class="gs-th r">spend</div>' +
+      '<div class="gs-th r">CPM</div><div class="gs-th r">CTR</div><div class="gs-th r">CPC</div><div class="gs-th r">ROAS</div>';
+    for (const r of rows.slice(0, 10)) {
+      const cell = (key) => {
+        const env = r.m[key];
+        if (!env || isMissing(env)) return '<div class="gs-td r"><span class="n">thin</span></div>';
+        const grade = adGrade(env, baselines[key]);
+        return '<div class="gs-td r gs-ad-' + (grade || "flat") + '">' + esc(formatParts(env.value, env.unit).num) +
+          (env.unit === "ratio" ? '<span class="n">%</span>' : "") + "</div>";
+      };
+      h += '<div class="gs-td gs-td-ent">' + esc(r.id) + "</div>" +
+        '<div class="gs-td r"><span class="n">' + (r.ads === null ? "—" : r.ads) + "</span></div>" +
+        '<div class="gs-td r">' + esc(formatParts(r.m.ad_spend.value, "EGP").num) + "</div>" +
+        cell("cpm") + cell("outbound_ctr") + cell("cpc_outbound") + cell("platform_roas");
+    }
+    return h + "</div></div></div>";
+  }
+
+  function renderAds(d, n, ads) {
+    return '<section class="gs-section" id="ads">' + head(n, "ads", "Ads — the chain from cost-to-be-seen to money", "/growth/entity?entity=ad") +
+      lead(esc("Read left to right and stop at the first stage that fails: that is the thing to fix. A cheap, well-clicked ad that sells nothing is not an ad problem.")) +
+      sub("Ads by spend — last " + AD_SPAN_WEEKS + " weeks", "worst quartile in red, best in green, ungraded where the stage cannot yet be read") +
+      adTable(ads) +
+      sub("Creative rollups — the same weeks", "read off the ad names, so no tagging is needed · a hand-set tag always wins over the name") +
+      '<div class="gs-cols">' + CREATIVE_CUTS.map(([entity, title, note]) => creativeTable(title, note, ads && ads.creative ? ads.creative[entity] : null)).join("") + "</div>" +
+      "</section>";
+  }
+
+  // ---------------------------------------------------------------- drop curve
+  const DROP_DAYS = 28;
+  const DROP_PRODUCTS = 12;
+  // A line per drop, same day indices, drawn from cumulative units. No library:
+  // the points are already in the response, this only maps them to a viewBox.
+  function dropChart(d) {
+    const series = [{ id: d.drop.drop_id, points: d.series.points, current: true }]
+      .concat(d.prior_drops.map((p) => ({ id: p.drop_id, points: p.points, current: false })))
+      .filter((s) => s.points && s.points.length);
+    if (!series.length) return "";
+    const maxDay = Math.max(...series.map((s) => s.points.length - 1), 1);
+    const maxUnits = Math.max(1, ...series.map((s) => s.points[s.points.length - 1].cumulative_units));
+    const W = 720;
+    const H = 190;
+    const P = { l: 34, r: 8, t: 10, b: 18 };
+    const x = (i) => P.l + (i / maxDay) * (W - P.l - P.r);
+    const y = (v) => H - P.b - (v / maxUnits) * (H - P.t - P.b);
+    const path = (pts) => pts.map((p, i) => (i ? "L" : "M") + x(i).toFixed(1) + " " + y(p.cumulative_units).toFixed(1)).join(" ");
+    let svg = '<svg class="gs-chart" viewBox="0 0 ' + W + " " + H + '" preserveAspectRatio="none" role="img" aria-label="Cumulative units by day since drop">';
+    for (const frac of [0, 0.5, 1]) {
+      const gy = y(maxUnits * frac);
+      svg += '<line x1="' + P.l + '" x2="' + (W - P.r) + '" y1="' + gy.toFixed(1) + '" y2="' + gy.toFixed(1) + '" class="gs-chart-grid"/>' +
+        '<text x="0" y="' + (gy + 3).toFixed(1) + '" class="gs-chart-lab">' + Math.round(maxUnits * frac).toLocaleString("en-US") + "</text>";
+    }
+    series.forEach((s, i) => {
+      svg += '<path d="' + path(s.points) + '" class="gs-chart-line' + (s.current ? " is-current" : "") + '" style="--i:' + i + '"/>';
+    });
+    // The last label sits on the right edge: anchor it inward or it is clipped.
+    [0, Math.round(maxDay / 2), maxDay].forEach((day, i) => {
+      const anchor = i === 2 ? "end" : i === 1 ? "middle" : "start";
+      svg += '<text x="' + x(day).toFixed(1) + '" y="' + (H - 4) + '" text-anchor="' + anchor + '" class="gs-chart-lab">day ' + day + "</text>";
+    });
+    return svg + "</svg>" +
+      '<div class="gs-chart-key">' + series.map((s, i) =>
+        '<span class="gs-chart-k' + (s.current ? " is-current" : "") + '" style="--i:' + i + '"><i></i>' + esc(s.id) +
+        " · " + s.points[s.points.length - 1].cumulative_units.toLocaleString("en-US") + " units</span>").join("") + "</div>";
+  }
+
+  // Units per day for one product, as bars. Shape first: the number is in the row.
+  function dropSpark(curve) {
+    const max = Math.max(1, ...curve);
+    return '<span class="gs-spark">' + curve.map((u) =>
+      '<i style="height:' + Math.max(u ? 12 : 3, Math.round((u / max) * 100)) + '%" class="' + (u ? "" : "z") + '"></i>').join("") + "</span>";
+  }
+
+  function renderDrop(d, n, drop) {
+    const body = (() => {
+      if (!drop) return '<div class="gs-list-empty">Not loaded.</div>';
+      const rows = drop.products.rows.slice(0, DROP_PRODUCTS);
+      let h = dropChart(drop);
+      if (!rows.length) return h + '<div class="gs-list-empty">No units in this window yet.</div>';
+      h += '<div class="gs-table"><div class="gs-table-in" style="grid-template-columns:minmax(0,1.7fr) minmax(0,.6fr) minmax(0,.6fr) minmax(0,1.3fr) minmax(0,.8fr)">' +
+        '<div class="gs-th">product</div><div class="gs-th r">units</div><div class="gs-th r">first<br><span class="u">day</span></div>' +
+        '<div class="gs-th">units per day since launch</div><div class="gs-th r">sell-through</div>';
+      for (const r of rows) {
+        const m = Object.fromEntries(r.metrics.map((e) => [e.metric, e]));
+        const st = m.sell_through_vs_commitment;
+        h += '<div class="gs-td gs-td-ent" style="--accent:' + accentOf(statesOf(m.units_sold_since_drop)) + '">' + esc(r.attributes.title || r.entity_id) + "</div>" +
+          '<div class="gs-td r">' + (isMissing(m.units_sold_since_drop) ? '<span class="slot"></span>' : m.units_sold_since_drop.value.toLocaleString("en-US")) + "</div>" +
+          '<div class="gs-td r"><span class="n">' + (r.attributes.first_day === null ? "—" : "d" + r.attributes.first_day) + "</span></div>" +
+          '<div class="gs-td">' + dropSpark(r.curve) + "</div>" +
+          '<div class="gs-td r">' + (isMissing(st) ? '<span class="slot"></span>' : esc(formatParts(st.value, "ratio").num) + '<span class="n">%</span>') + "</div>";
+      }
+      h += "</div></div>";
+      const commit = drop.commitment.state === "ok"
+        ? "Against " + drop.commitment.units.toLocaleString("en-US") + " units held the night before launch (" + esc(dt(drop.commitment.snapshot_date)) + ")."
+        : "Sell-through is blank because stock was not being recorded before this drop launched — daily stock snapshots began 14 Sep 2026, so the " +
+          "20 Sep drop is the first with a real denominator. A blank is not a zero.";
+      h += '<div class="gs-note">' + commit + "</div>";
+      return h;
+    })();
+    const lead9 = drop
+      ? "Day 0 is launch day. " + (drop.series.points.length ? "The busiest day so far is day " +
+          drop.series.points.reduce((best, p) => (p.units > best.units ? p : best), drop.series.points[0]).day_index + "." : "") +
+        " Prior drops are drawn on the same day numbers, so the shapes compare directly."
+      : "Not loaded.";
+    return '<section class="gs-section" id="drop">' + head(n, "drop", "Drop — sell-through by day since launch", "/growth/drop") +
+      lead(esc(lead9)) +
+      sub(drop ? "Cumulative units · " + drop.drop.drop_id + (drop.drop.is_current ? " (current)" : "") : "Cumulative units",
+        drop ? "window " + drop.drop.window.start + " → " + drop.drop.window.end : "") +
+      body + "</section>";
+  }
+
+  // ---------------------------------------------------------------- conversion cuts
+  const CVR_CUTS = [
+    ["shopify.referrer_source", "By source", "where the session came from, per Shopify"],
+    ["shopify.device", "By device", "mobile, desktop, tablet"],
+    ["shopify.device__referrer_source", "Device × source", "the cut that separates a bad channel from a bad phone page"],
+    ["shopify.landing_page", "By landing page", "collection paths fold into their product"]
+  ];
+  const CVR_METRICS = ["sessions_shopify", "atc_rate_shopify", "checkout_rate_shopify", "cvr_shopify"];
+  const THIN_SESSIONS = 200;
+  function cvrCutTable(title, note, res) {
+    let h = '<div class="gs-panel"><div class="gs-panel-h"><span class="gs-panel-t">' + esc(title) + '</span><span class="gs-panel-s">' + esc(note) + "</span></div>";
+    if (!res) return h + '<div class="gs-list-empty">Not loaded.</div></div>';
+    const rows = res.rows.map((r) => ({ id: r.entity_id, m: Object.fromEntries(r.metrics.map((e) => [e.metric, e])) }))
+      .filter((r) => r.m.sessions_shopify && !isMissing(r.m.sessions_shopify) && r.m.sessions_shopify.value > 0);
+    if (!rows.length) {
+      const first = res.rows[0] && res.rows[0].metrics[0];
+      const why = first && first.state_detail.missing ? human(first.state_detail.missing.reason) : "no Shopify sessions loaded for this week yet — press load data now";
+      return h + '<div class="gs-list-empty">No data — ' + esc(why) + ".</div></div>";
+    }
+    const rate = (e, thin) => !e || isMissing(e) ? '<span class="slot"></span>' : '<span class="' + (thin ? "dim" : "") + '">' + esc(formatParts(e.value, "ratio").num) + '</span><span class="n">%</span>';
+    h += '<div class="gs-table"><div class="gs-table-in" style="grid-template-columns:minmax(0,1.9fr) minmax(0,.8fr) minmax(0,.6fr) minmax(0,.7fr) minmax(0,.6fr)">' +
+      '<div class="gs-th">' + esc(title.replace(/^By /, "")) + '</div><div class="gs-th r">sessions<br><span class="u">n</span></div><div class="gs-th r">ATC</div><div class="gs-th r">checkout</div><div class="gs-th r">CVR</div>';
+    for (const { id, m } of rows.slice(0, 12)) {
+      const n = m.sessions_shopify.value;
+      const thin = n < THIN_SESSIONS;
+      h += '<div class="gs-td gs-td-ent" style="--accent:' + accentOf(statesOf(m.cvr_shopify || m.sessions_shopify)) + '"><span class="' + (thin ? "dim" : "") + '" title="' + esc(id) + '">' + esc(id) + "</span>" + (thin ? ' <span class="n">thin</span>' : "") + "</div>" +
+        '<div class="gs-td r"><span class="' + (thin ? "dim" : "") + '">' + n.toLocaleString("en-US") + "</span></div>" +
+        '<div class="gs-td r">' + rate(m.atc_rate_shopify, thin) + "</div>" +
+        '<div class="gs-td r">' + rate(m.checkout_rate_shopify, thin) + "</div>" +
+        '<div class="gs-td r">' + rate(m.cvr_shopify, thin) + "</div>";
+    }
+    h += "</div></div>";
+    if (rows.length > 12) h += '<div class="gs-note">' + (rows.length - 12) + " smaller rows not shown.</div>";
+    return h + "</div>";
+  }
+
+  function renderFunnel(d, n, cvr) {
+    const s = d.surfaces.funnel.sections;
+    const shop = s.shopify_sessions.concat(s.outcome);
+    const ga = s.ga4_sessions;
+    const all = flat(d.surfaces.funnel);
+    const fc = count(all);
+    const loss = pick(s.outcome, "funnel_largest_loss_egp");
+    let h = loss && !isMissing(loss)
+      ? "The largest single loss is " + esc(val(loss)) + (loss.confidence === "modelled" ? " (modelled)" : "") + ". "
+      : "The largest loss cannot be named yet: " + fc.miss + " of " + fc.total + " funnel metrics are missing, so no step-to-step drop is computable. ";
+    h += esc(flaggedSentence(all));
+    return '<section class="gs-section" id="funnel">' + head(n, "funnel", "Funnel — two series, never merged", "surfaces.funnel") +
+      lead(h, "var(--st-suspect)") +
+      '<div class="gs-cols">' +
+        '<div class="gs-panel"><div class="gs-panel-h"><span class="gs-panel-t">Shopify</span><span class="gs-panel-s">measured · Shopify sessions basis</span><span class="gs-panel-c">' + count(shop).miss + "/" + shop.length + " missing</span></div>" + stack(shop) + "</div>" +
+        '<div class="gs-panel gs-panel-dashed"><div class="gs-panel-h"><span class="gs-panel-t">GA4</span><span class="gs-panel-s">separate basis · not interchangeable</span><span class="gs-panel-c">' + count(ga).miss + "/" + ga.length + " missing</span></div>" + stack(ga) + "</div>" +
+      "</div>" +
+      '<div class="gs-cols">' +
+        '<div class="gs-stack">' + sub("Ad rungs · paid exposure to the site") + grid(s.ad_rungs, "gs-grid-narrow") + "</div>" +
+        '<div class="gs-stack">' + sub("Where the revenue is lost") + grid(s.lost_revenue.concat(s.data_health), "gs-grid-narrow") + "</div>" +
+      "</div>" +
+      sub("Conversion cuts — this week", "Shopify sessions basis · ATC, checkout and CVR are shares of sessions · rows under " + THIN_SESSIONS + " sessions are thin, not findings") +
+      '<div class="gs-cols">' + CVR_CUTS.map(([id, title, note]) => cvrCutTable(title, note, cvr && cvr[id])).join("") + "</div>" +
+      "</section>";
+  }
+
+  // ---------------------------------------------------------------- product (entity table)
+  const PRODUCT_COLS = [
+    ["units_total", "Units", ""], ["sell_through_vs_commitment", "Sell-through", "rate · n"],
+    // Spend reaches a product through the ads that name it, so paid support sits
+    // beside what the product did with it.
+    ["ad_spend", "Ad spend", "ads naming it"],
+    ["return_request_rate_units", "Returns", "asked back"],
+    ["reversal_rate_units", "RTO", "rate · n"], ["genuine_return_rate_units", "Refund", "rate · n"], ["gross_profit", "Gross profit", ""]
+  ];
+  function productTable(ent) {
+    const cols = "minmax(180px,2fr) repeat(" + PRODUCT_COLS.length + ",minmax(96px,1fr)) minmax(150px,1.4fr)";
+    let h = '<div class="gs-table"><div class="gs-table-in" style="min-width:860px;grid-template-columns:' + cols + '">';
+    h += '<div class="gs-th">Product</div>' + PRODUCT_COLS.map(([, t, u]) => '<div class="gs-th r">' + esc(t) + (u ? '<br><span class="u">' + esc(u) + "</span>" : "") + "</div>").join("") + '<div class="gs-th">Size curve</div>';
+    const rows = ent && ent.rows ? ent.rows : [];
+    const sizes = '<div class="gs-td"><div class="gs-sizes"><div style="height:28px"></div><div style="height:38px"></div><div style="height:46px"></div><div style="height:38px"></div><div style="height:24px"></div></div></div>';
+    if (!rows.length) {
+      const why = !ent ? "product rows not loaded" : ent.row_source && ent.row_source.reason ? human(ent.row_source.reason) : "no product rows";
+      h += '<div class="gs-td"><span class="slot"></span><span class="n">' + esc(why) + "</span></div>" +
+        PRODUCT_COLS.map(([, , u]) => '<div class="gs-td r"><span class="slot"></span>' + (u ? '<span class="n">n —</span>' : "") + "</div>").join("") + sizes;
+    } else {
+      for (const r of rows) {
+        const byKey = {};
+        for (const e of r.metrics) byKey[e.metric] = e;
+        const all = r.metrics.map(statesOf).flat();
+        h += '<div class="gs-td gs-td-ent" style="--accent:' + accentOf(all) + '">' + esc((r.attributes && r.attributes.title) || r.entity_id) + "</div>";
+        for (const [k, , u] of PRODUCT_COLS) {
+          const e = byKey[k];
+          if (!e || isMissing(e)) h += '<div class="gs-td r"><span class="slot"></span>' + (u ? '<span class="n">n —</span>' : "") + "</div>";
+          else { const f = formatParts(e.value, e.unit); h += '<div class="gs-td r"><span class="' + (e.confidence === "measured" ? "" : "dim") + '">' + esc(f.num) + '</span><span class="n">' + esc(f.suffix) + "</span>" + (u ? '<span class="n">n —</span>' : "") + "</div>"; }
+        }
+        h += sizes;
+      }
+    }
+    return h + "</div></div>";
+  }
+  function renderProduct(d, n, ent) {
+    const s = d.surfaces.product.sections;
+    const all = s.post_purchase_by_units.concat(s.cross_reference);
+    const rowsN = ent && ent.rows ? ent.rows.length : 0;
+    const h = rowsN
+      ? rowsN + " products shown" + (ent.paging && ent.paging.has_more ? " (first " + rowsN + ")" : "") + ". " + count(all).miss + " of " + all.length + " product metrics are missing, so cells stay blank rather than guessing."
+      : "No product rows yet, so the table shows its shape and says so. The size curve stays empty rather than guessing a distribution.";
+    return '<section class="gs-section" id="product">' + head(n, "product", "Product — per product, with size curve", "surfaces.product · /growth/entity") +
+      lead(esc(h)) + productTable(ent) +
+      '<div class="gs-cols"><div class="gs-note">Sell-through, RTO and refund each print their own sample size — a 40% RTO on five units is not a fact. Until the envelope carries a sample count, n prints as “—”, which is a different statement from n = 0.</div>' +
+      '<div>' + grid(all, "gs-grid-narrow") + "</div></div>" +
+      "</section>";
+  }
+
+  // ---------------------------------------------------------------- RTO cuts
+  const RTO_CUTS = [
+    ["traffic_source", "By source", "attributed platform, or unattributed"],
+    ["governorate", "By governorate", "Shopify's province: the clean geographic cut"],
+    ["city", "By city", "as typed at checkout — spellings split one city (Cairo / القاهرة)"],
+    ["price_band", "By price band", "merchandise after discounts"],
+    ["payment_type", "By payment type", "COD vs prepaid"],
+    ["segment", "First-time vs repeat", "the customer's first order, or a later one"]
+  ];
+  const RTO_SPAN_WEEKS = 8;
+  const THIN_N = 20;
+  function rtoCutTable(entity, title, note, res) {
+    let h = '<div class="gs-panel"><div class="gs-panel-h"><span class="gs-panel-t">' + esc(title) + '</span><span class="gs-panel-s">' + esc(note) + "</span></div>";
+    if (!res) return h + '<div class="gs-list-empty">Not loaded.</div></div>';
+    const rows = res.rows
+      .map((r) => ({ id: r.entity_id, e: r.metrics[0] }))
+      .filter((r) => r.e && !(r.e.state_detail.missing && ["unwired", "no_orders_in_period"].includes(r.e.state_detail.missing.reason)));
+    rows.sort((a, b) => ((b.e.sample && b.e.sample.n) || 0) - ((a.e.sample && a.e.sample.n) || 0));
+    if (!rows.length) {
+      const why = res.rows[0] && res.rows[0].metrics[0] && res.rows[0].metrics[0].state_detail.missing ? human(res.rows[0].metrics[0].state_detail.missing.reason) : "no orders in these weeks";
+      return h + '<div class="gs-list-empty">No data — ' + esc(why) + ".</div></div>";
+    }
+    h += '<div class="gs-table"><div class="gs-table-in" style="grid-template-columns:minmax(0,1.6fr) minmax(0,.6fr) minmax(0,.7fr) minmax(0,1fr)">' +
+      '<div class="gs-th">' + esc(title.replace(/^By /, "")) + '</div><div class="gs-th r">orders<br><span class="u">n</span></div><div class="gs-th r">RTO</div><div class="gs-th">settled</div>';
+    for (const { id, e } of rows.slice(0, 12)) {
+      const nOrd = e.sample ? e.sample.n : null;
+      const thin = nOrd !== null && nOrd < THIN_N;
+      const missing = isMissing(e);
+      h += '<div class="gs-td gs-td-ent" style="--accent:' + accentOf(statesOf(e)) + '"><span class="' + (thin ? "dim" : "") + '">' + esc(id) + "</span>" + (thin ? ' <span class="n">thin</span>' : "") + "</div>" +
+        '<div class="gs-td r"><span class="' + (thin ? "dim" : "") + '">' + (nOrd === null ? "—" : nOrd.toLocaleString("en-US")) + "</span></div>" +
+        '<div class="gs-td r">' + (missing ? '<span class="slot"></span>' : '<span class="' + (thin ? "dim" : "") + '">' + esc(formatParts(e.value, "ratio").num) + '</span><span class="n">%</span>') + "</div>" +
+        '<div class="gs-td"><span class="n">' + (e.coverage === null || e.coverage === undefined ? "—" : Math.round(e.coverage * 100) + "% resolved") + "</span></div>";
+    }
+    h += "</div></div>";
+    if (rows.length > 12) h += '<div class="gs-note">' + (rows.length - 12) + " smaller groups not shown.</div>";
+    return h + "</div>";
+  }
+
+  // ---------------------------------------------------------------- return requests
+  // The limit is a page over the whole catalogue, ordered by id, not by how much
+  // came back — so the product cut has to ask for every product or it will page
+  // past the ones with returns. 274 products today, well inside the 500 ceiling.
+  const RETURN_CUTS = [
+    ["size", "By size", "the catalogue's own size, so jeans stay '38 - L'", "80"],
+    ["product", "By product", "against each product's own units sold", "400"],
+    ["reason", "By reason", "what the customer said, mapped to the registry", "60"]
+  ];
+  const RETURN_METRICS = ["return_request_rate_units", "return_requests_units", "exchange_request_rate_units", "exchange_requests_units"];
+  const RETURN_REASON_METRICS = ["return_requests_units", "exchange_requests_units"];
+  function returnCutTable(entity, title, note, res) {
+    let h = '<div class="gs-panel"><div class="gs-panel-h"><span class="gs-panel-t">' + esc(title) + '</span><span class="gs-panel-s">' + esc(note) + "</span></div>";
+    if (!res) return h + '<div class="gs-list-empty">Not loaded.</div></div>';
+    const isReason = entity === "reason";
+    const rows = res.rows.map((r) => ({ id: r.attributes && r.attributes.title ? r.attributes.title : r.entity_id, m: Object.fromEntries(r.metrics.map((e) => [e.metric, e])) }))
+      .filter((r) => {
+        const asked = (r.m.return_requests_units || {}).value || 0;
+        const ex = (r.m.exchange_requests_units || {}).value || 0;
+        return asked + ex > 0;
+      })
+      .sort((a, b) => (((b.m.return_requests_units || {}).value || 0) + ((b.m.exchange_requests_units || {}).value || 0)) -
+        (((a.m.return_requests_units || {}).value || 0) + ((a.m.exchange_requests_units || {}).value || 0)));
+    if (!rows.length) {
+      const first = res.rows[0] && res.rows[0].metrics[0];
+      const why = first && first.state_detail.missing ? human(first.state_detail.missing.reason) : "nobody asked to return anything in these weeks";
+      return h + '<div class="gs-list-empty">No rows — ' + esc(why) + ".</div></div>";
+    }
+    h += '<div class="gs-table"><div class="gs-table-in" style="grid-template-columns:minmax(0,1.6fr) minmax(0,.6fr) minmax(0,.6fr)' + (isReason ? "" : " minmax(0,.7fr) minmax(0,.7fr)") + '">' +
+      '<div class="gs-th">' + esc(title.replace(/^By /, "")) + '</div><div class="gs-th r">returns<br><span class="u">units</span></div><div class="gs-th r">exchanges<br><span class="u">units</span></div>' +
+      (isReason ? "" : '<div class="gs-th r">return<br><span class="u">rate</span></div><div class="gs-th r">exchange<br><span class="u">rate</span></div>');
+    for (const { id, m } of rows.slice(0, 12)) {
+      const rate = (e) => {
+        if (!e || isMissing(e)) return '<div class="gs-td r"><span class="slot"></span></div>';
+        const thin = e.sample && e.sample.n < 20;
+        return '<div class="gs-td r"' + (e.sample ? ' title="' + esc("n " + e.sample.n + " " + e.sample.of) + '"' : "") + '><span class="' + (thin ? "dim" : "") + '">' +
+          esc(formatParts(e.value, "ratio").num) + '</span><span class="n">%</span></div>';
+      };
+      const count = (e) => '<div class="gs-td r">' + (!e || isMissing(e) ? '<span class="slot"></span>' : (e.value || 0).toLocaleString("en-US")) + "</div>";
+      h += '<div class="gs-td gs-td-ent" style="--accent:' + accentOf(statesOf(m.return_requests_units || m.return_request_rate_units)) + '">' + esc(id) + "</div>" +
+        count(m.return_requests_units) + count(m.exchange_requests_units) +
+        (isReason ? "" : rate(m.return_request_rate_units) + rate(m.exchange_request_rate_units));
+    }
+    return h + "</div></div></div>";
+  }
+
+  // ---------------------------------------------------------------- post-purchase
+  const RETURN_SPAN_WEEKS = 4;
+  // Ask only for weeks the uploaded requests actually cover: a window reaching back
+  // before the file starts can only answer "missing", which tells the reader nothing.
+  function returnSpanWeeks(d) {
+    const src = (d.meta.sources || {}).fact_return_request;
+    if (!src || !src.covered_from) return RETURN_SPAN_WEEKS;
+    const weeks = Math.floor((Date.parse(d.week.start + "T00:00:00Z") - Date.parse(src.covered_from + "T00:00:00Z")) / (7 * 86400000)) + 1;
+    return Math.max(1, Math.min(RETURN_SPAN_WEEKS, weeks));
+  }
+  function renderPost(d, n, rto, ret) {
+    const s = d.surfaces.post_purchase.sections;
+    const all = s.rto.concat(s.refunds, s.exchanges, s.interventions, s.requests || []);
+    const sys = [
+      ["RTO", "Return to origin: never delivered, never paid. Costs shipping out and back.", s.rto],
+      ["Refunds", "Delivered, paid, then reversed. Revenue removed after the fact.", s.refunds],
+      ["Exchanges", "Revenue kept, second shipment paid. Mostly a fit signal.", s.exchanges]
+    ];
+    return '<section class="gs-section" id="post_purchase">' + head(n, "post_purchase", "Post-purchase — three systems, three columns", "surfaces.post_purchase") +
+      lead(esc("Three separate systems, " + count(all).miss + " of " + all.length + " metrics missing. Nothing is netted into a single returns figure.")) +
+      '<div class="gs-cols">' + sys.map(([name, desc, list]) =>
+        '<div class="gs-panel"><div class="gs-panel-h"><span class="gs-panel-t">' + name + '</span><span class="gs-panel-c">' + count(list).miss + "/" + list.length + ' missing</span></div><div class="gs-panel-d">' + desc + "</div>" + stack(list) + "</div>").join("") + "</div>" +
+      sub("RTO cuts — last " + RTO_SPAN_WEEKS + " weeks", "reversal rate by order week · rows under " + THIN_N + " orders are thin, not findings · a group settles as its parcels deliver or return") +
+      '<div class="gs-cols">' + RTO_CUTS.map(([entity, title, note]) => rtoCutTable(entity, title, note, rto && rto[entity])).join("") + "</div>" +
+      sub("Return and exchange requests — last " + returnSpanWeeks(d) + " week(s) with a request file behind them", "from the Yanet export · a request is what the customer asked for, not money that moved · counted against the week the order was placed") +
+      grid(s.requests, "gs-grid-narrow") +
+      '<div class="gs-cols">' + RETURN_CUTS.map(([entity, title, note]) => returnCutTable(entity, title, note, ret && ret[entity])).join("") + "</div>" +
+      '<div class="gs-note">Rates are blank for any window that begins before the uploaded request file does — with no file behind those weeks a 0% would be a lie, not a result. Export a longer history from Yanet to read earlier weeks. A week is fully settled 14 days after it ends: requests arrived 1–9 days after the order in the first export.</div>' +
+      sub("Interventions") + grid(s.interventions, "gs-grid-narrow") +
+      '<div class="gs-merged"><span class="k">never merged</span><span class="t">There is no “returns rate” anywhere in this system. RTO is a delivery failure that costs shipping both ways and never earns revenue; a refund is a delivered sale reversed; an exchange keeps the revenue and costs a second shipment. Three causes, three fixes — the only place they combine is the contribution line, as separate steps.</span></div>' +
+      "</section>";
+  }
+
+  function renderGeneric(d, n, key, title) {
+    const surface = d.surfaces[key];
+    let body = "";
+    for (const [section, list] of Object.entries(surface.sections)) body += sub(human(section)) + grid(list);
+    if (surface.lists) {
+      body += '<div class="gs-cols">' + Object.entries(surface.lists).map(([k, l]) =>
+        '<div class="gs-list gs-list-continuity"><div class="gs-list-h"><span class="gs-list-t">' + esc(human(k)) + '</span></div><div class="gs-list-empty">' +
+        (l.state === "ok" ? l.items.length + " item(s)" : "No data — " + esc(human(l.reason)) + ". An empty list from something that never ran is not an all-clear.") + "</div></div>").join("") + "</div>";
+    }
+    return '<section class="gs-section" id="' + key + '">' + head(n, key, title, "surfaces." + key) + lead(esc(genericLead(flat(surface), title.toLowerCase()))) + body + "</section>";
+  }
+
+  // ---------------------------------------------------------------- page
+  let lastRto = null;
+  let lastCvr = null;
+  let lastDrop = null;
+  let lastCohorts = null;
+  let lastReturns = null;
+  let lastAds = null;
+  function render(d, ent, rto, cvr, drop, cohorts, returns, ads) {
+    last = d;
+    lastEntity = ent;
+    if (rto !== undefined) lastRto = rto;
+    if (cvr !== undefined) lastCvr = cvr;
+    if (drop !== undefined) lastDrop = drop;
+    if (cohorts !== undefined) lastCohorts = cohorts;
+    if (returns !== undefined) lastReturns = returns;
+    if (ads !== undefined) lastAds = ads;
+    defs = d.meta.definitions || {};
+    weekInput.value = d.week.start;
+    document.getElementById("contract").textContent = d.contract_version + " · " + d.week.start + " → " + d.week.end + (d.week.is_complete ? "" : " · in progress");
+    const bs = d.meta.envelopes.by_state || {};
+    const flagged = (bs.suspect || 0) + (bs.contaminated || 0) + (bs.stale || 0);
+    const hero = '<section class="gs-hero"><div><h1>Did this drop make money, and where did the money leak.</h1>' +
+      "<p>Every number on this page is an envelope from <span style=\"font-family:var(--mono)\">/growth/week</span> — nothing is estimated, softened or filled in. Where the API says missing, the tile is blank on purpose. Press <span style=\"font-family:var(--mono)\">basis</span> on any delta to see both windows.</p></div>" +
+      '<div class="gs-meta"><div><span>envelopes in response</span><span class="v">' + d.meta.envelopes.total + "</span></div>" +
+      '<div><span>readable</span><span class="v" style="color:var(--st-ok)">' + (d.meta.envelopes.total - (bs.missing || 0)) + "</span></div>" +
+      '<div><span>missing</span><span class="v" style="color:var(--quiet)">' + (bs.missing || 0) + "</span></div>" +
+      '<div class="sep"><span>flagged</span><span class="v" style="color:var(--st-suspect)">' + flagged + "</span></div>" +
+      '<div><span>metrics not wired</span><span class="v">' + d.meta.unwired.length + "</span></div>" +
+      '<div><span>as of</span><span class="v">' + esc(dt(d.week.as_of) + " " + d.week.as_of.slice(0, 4)) + "</span></div>" +
+      (d.meta.warnings.length ? '<div><span>warnings</span><span class="v" style="color:var(--st-suspect)">' + d.meta.warnings.length + "</span></div>" : "") +
+      "</div></section>";
+
+    let i = 0;
+    const html = hero +
+      renderCommand(d, ++i) + renderEconomics(d, ++i) + renderAcquisition(d, ++i) + renderCreative(d, ++i) +
+      renderFunnel(d, ++i, lastCvr) + renderAds(d, ++i, lastAds) + renderDrop(d, ++i, lastDrop) + renderProduct(d, ++i, ent) + renderGeneric(d, ++i, "offer", "Offer") +
+      renderCustomer(d, ++i, lastCohorts) + renderPost(d, ++i, lastRto, lastReturns) + renderGeneric(d, ++i, "forecast", "Forecast") +
+      renderGeneric(d, ++i, "decisions", "Decisions") +
+      '<div class="gs-foot"><span>contract · ' + esc(d.contract_version) + "</span><span>" + d.meta.reads.d1_batches + " read · " + d.meta.reads.statements + " statements</span><span>generated " + esc(ts(d.meta.generated_at)) + '</span><span class="r">' + esc(d.week.timezone) + "</span></div>";
+    app.innerHTML = html;
+  }
+
+  async function getJson(path, params) {
+    const url = new URL(API + path, location.origin);
+    for (const [k, v] of Object.entries(params || {})) if (v) url.searchParams.set(k, v);
+    const r = await fetch(url, { headers: { Accept: "application/json" }, credentials: "include" });
+    const j = await r.json().catch(() => null);
+    if (!r.ok || !j || !j.ok) throw new Error((j && ((j.error_code ? j.error_code + ": " : "") + j.error)) || "HTTP " + r.status + " on " + path);
+    return j;
+  }
+
+  function weekFromHash() {
+    const m = /week=(\d{4}-\d{2}-\d{2})/.exec(location.hash);
+    return m ? m[1] : "";
+  }
+  function shift(days) {
+    const d = new Date((weekInput.value || new Date().toISOString().slice(0, 10)) + "T00:00:00Z");
+    d.setUTCDate(d.getUTCDate() + days);
+    location.hash = "week=" + d.toISOString().slice(0, 10);
+  }
+
+  async function load() {
+    // Design preview only: a build step can embed a synthetic fixture as
+    // window.__GROWTH_FIXTURE__ to render every state offline. Never set in production.
+    if (window.__GROWTH_FIXTURE__) {
+      render(window.__GROWTH_FIXTURE__, window.__GROWTH_FIXTURE_ENTITY__ || null);
+      return;
+    }
+    const week = weekFromHash();
+    let d;
+    try {
+      d = await getJson("/growth/week", { week_start: week });
+    } catch (err) {
+      app.innerHTML = '<div class="gs-err">' + esc(err.message) + "</div>";
+      return;
+    }
+    // The product table is its own read; a failure there leaves the rest standing.
+    // Entity reads are their own requests; a failure in one leaves the rest standing.
+    const entityRead = (params) => getJson("/growth/entity", Object.assign({ week_start: d.week.start }, params)).catch(() => null);
+    const [ent, ...cuts] = await Promise.all([
+      entityRead({ entity: "product", limit: "25", metrics: PRODUCT_COLS.map((c) => c[0]).join(",") }),
+      ...RTO_CUTS.map(([entity]) => entityRead({ entity, metrics: "reversal_rate", span_weeks: String(RTO_SPAN_WEEKS), limit: "60" })),
+      ...CVR_CUTS.map(([breakdown]) => entityRead({ entity: "breakdown", breakdown, metrics: CVR_METRICS.join(","), limit: "40" })),
+      getJson("/growth/drop", { days: String(DROP_DAYS), limit: String(DROP_PRODUCTS) }).catch(() => null),
+      entityRead({ entity: "cohort", metrics: COHORT_METRICS.join(","), limit: "18" }),
+      ...RETURN_CUTS.map(([entity, , , limit]) => entityRead({ entity, span_weeks: String(returnSpanWeeks(d)), limit,
+        metrics: (entity === "reason" ? RETURN_REASON_METRICS : RETURN_METRICS).join(",") })),
+      entityRead({ entity: "ad", span_weeks: String(AD_SPAN_WEEKS), limit: "60", metrics: AD_METRICS.join(",") }),
+      ...CREATIVE_CUTS.map(([entity]) => entityRead({ entity, span_weeks: String(AD_SPAN_WEEKS), limit: "30", metrics: CREATIVE_METRICS.join(",") }))
+    ]);
+    const rto = {};
+    RTO_CUTS.forEach(([entity], i) => { rto[entity] = cuts[i]; });
+    const cvr = {};
+    CVR_CUTS.forEach(([id], i) => { cvr[id] = cuts[RTO_CUTS.length + i]; });
+    const returnsAt = RTO_CUTS.length + CVR_CUTS.length + 2;
+    const returns = {};
+    RETURN_CUTS.forEach(([entity], i) => { returns[entity] = cuts[returnsAt + i]; });
+    render(d, ent, rto, cvr, cuts[RTO_CUTS.length + CVR_CUTS.length] || null, cuts[RTO_CUTS.length + CVR_CUTS.length + 1] || null, returns,
+      (() => {
+        const ads = cuts[returnsAt + RETURN_CUTS.length] || null;
+        const creative = {};
+        CREATIVE_CUTS.forEach(([entity], i) => { creative[entity] = cuts[returnsAt + RETURN_CUTS.length + 1 + i]; });
+        return ads ? Object.assign({}, ads, { creative }) : { rows: [], creative };
+      })());
+  }
+
+  // Runs the nightly order, session and Meta loads now: recent days plus history.
+  // Takes a minute or three; Shopify and Meta pace the reads.
+  // The load runs in the Worker after the request returns, so the browser never
+  // waits on it — holding the connection for minutes was what produced
+  // "Failed to fetch" while the load itself was still running. The press starts a
+  // run; this polls /growth/load-status until that run reports it has finished.
+  const loadBtn = document.getElementById("load-orders");
+  const loadNote = document.getElementById("load-note");
+  const TABLE_LABELS = { fact_order: "orders", fact_order_line: "order lines", fact_session_daily: "sessions", fact_ad_daily: "Meta ads", fact_adset_daily: "Meta ad sets", fact_inventory_daily: "stock" };
+  // A press keeps asking for the next window until the Worker says there is none
+  // left, or until this many passes / this long — whichever comes first.
+  const LOAD_MAX_PASSES = 40;
+  const LOAD_MAX_MS = 6 * 60 * 1000;
+  function loadSay(text, tone) {
+    if (!loadNote) return;
+    loadNote.textContent = text || "";
+    loadNote.hidden = !text;
+    loadNote.style.color = tone === "bad" ? "var(--st-suspect)" : "var(--quiet)";
+  }
+  function windowLine(w) {
+    const table = TABLE_LABELS[w.target_table] || w.target_table;
+    const span = w.period_start + "→" + w.period_end;
+    if (w.status === "failed") return table + " " + span + ": FAILED — " + (w.error || "no reason recorded");
+    return table + " " + span + ": " + (w.rows_written === null ? "written" : w.rows_written.toLocaleString("en-US") + " rows");
+  }
+  loadBtn.onclick = async () => {
+    loadBtn.disabled = true;
+    const label = loadBtn.textContent;
+    const began = Date.now();
+    let windows = 0;
+    let failures = 0;
+    try {
+      // Each call does one window and returns in seconds. The work is never left to
+      // run past the response: a background job that outlives its request is killed
+      // by the platform, which is how two presses once wrote nothing at all.
+      for (let pass = 1; pass <= LOAD_MAX_PASSES; pass += 1) {
+        loadBtn.textContent = "loading… " + windows + " done";
+        loadSay("Loading window " + pass + ". Each one is saved as it finishes — you can stop any time and press again later.");
+        const r = await fetch(API + "/growth/load?sources=orders,sessions,meta", { method: "POST", headers: { Accept: "application/json" }, credentials: "include" });
+        const j = await r.json().catch(() => null);
+        if (!r.ok || !j) throw new Error((j && j.error) || "HTTP " + r.status);
+        windows += j.windows_run || 0;
+        for (const res of Object.values(j.sources || {})) {
+          for (const w of res.windows || []) if (w.error) failures += 1;
+        }
+        if (j.done) break;
+        if (Date.now() - began > LOAD_MAX_MS) {
+          loadSay(windows + " window(s) loaded. More remains — press again when you have a minute.", null);
+          load();
+          return;
+        }
+      }
+      loadSay(failures
+        ? windows + " window(s) loaded, " + failures + " failed — see the load status for why."
+        : "Loaded " + windows + " window(s). Everything the sources can give is in.");
+      load();
+    } catch (err) {
+      loadSay("Load failed after " + windows + " window(s): " + err.message, "bad");
+    } finally {
+      loadBtn.disabled = false;
+      loadBtn.textContent = label;
+    }
+  };
+
+  // The Yanet export, saved as CSV. Sent as text: the Worker parses it and keeps
+  // no name, email, phone or address from the file.
+  const yanetInput = document.getElementById("yanet-file");
+  yanetInput.onchange = async () => {
+    const file = yanetInput.files && yanetInput.files[0];
+    if (!file) return;
+    loadSay("Reading " + file.name + "…");
+    try {
+      const text = await file.text();
+      const r = await fetch(API + "/growth/import/yanet", { method: "POST", headers: { "Content-Type": "text/csv" }, credentials: "include", body: text });
+      const j = await r.json().catch(() => null);
+      if (!r.ok || !j || !j.ok) throw new Error((j && j.error) || "HTTP " + r.status);
+      const matched = Object.entries(j.matched || {}).map(([k, v]) => v + " " + k.replace(/_/g, " ")).join(", ");
+      loadSay(j.requests + " request(s), " + j.items + " item(s) from " + (j.period.start || "?") + " to " + (j.period.end || "?") + (matched ? " — " + matched : "") + ".");
+      if (j.warnings && j.warnings.length) alert("Imported with notes:\n" + j.warnings.join("\n"));
+      load();
+    } catch (err) {
+      loadSay("Import failed: " + err.message, "bad");
+    } finally {
+      yanetInput.value = "";
+    }
+  };
+
+  G.bindBasisToggles(app);
+  document.getElementById("prev").onclick = () => shift(-7);
+  document.getElementById("next").onclick = () => shift(7);
+  weekInput.onchange = () => { if (weekInput.value) location.hash = "week=" + weekInput.value; };
+  window.addEventListener("hashchange", () => { if (/week=/.test(location.hash)) load(); });
+  load();
+})();
+</script>
+</body>
+</html>

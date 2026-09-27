@@ -1,0 +1,1664 @@
+{
+  "contract_version": "growth-os.v3",
+  "baselines": {},
+  "evidence_gates": {
+    "impressions": 1000,
+    "clicks": 100,
+    "purchases": 5,
+    "attribution_coverage": 0.25
+  },
+  "week": {
+    "start": "2000-01-02",
+    "end": "2000-01-08",
+    "as_of": "2000-01-08",
+    "is_complete": true,
+    "timezone": "Africa/Cairo"
+  },
+  "entity": "reason",
+  "period": {
+    "start": "2000-01-02",
+    "end": "2000-01-08",
+    "span_weeks": 1
+  },
+  "id": null,
+  "breakdown": null,
+  "metric_keys": [
+    "reversals_attributed",
+    "rto_reason_share",
+    "return_reason_share",
+    "exchange_reason_share",
+    "return_requests_units",
+    "exchange_requests_units",
+    "refund_value"
+  ],
+  "rows": [
+    {
+      "entity_id": "wrong_size",
+      "attributes": {
+        "label": "Wrong size",
+        "applies_to": "[\"rto\",\"refund\",\"exchange\"]",
+        "owner": "sizing_content"
+      },
+      "metrics": [
+        {
+          "value": null,
+          "unit": "EGP",
+          "metric": "reversals_attributed",
+          "state": "missing",
+          "secondary_states": [],
+          "confidence": "measured",
+          "coverage": null,
+          "comparison": null,
+          "basis": null,
+          "sample": null,
+          "state_detail": {
+            "missing": {
+              "reason": "unwired"
+            }
+          },
+          "definition_version": 1
+        },
+        {
+          "value": null,
+          "unit": "ratio",
+          "metric": "rto_reason_share",
+          "state": "missing",
+          "secondary_states": [],
+          "confidence": "measured",
+          "coverage": null,
+          "comparison": null,
+          "basis": null,
+          "sample": null,
+          "state_detail": {
+            "missing": {
+              "reason": "unwired"
+            }
+          },
+          "definition_version": 1
+        },
+        {
+          "value": null,
+          "unit": "ratio",
+          "metric": "return_reason_share",
+          "state": "missing",
+          "secondary_states": [],
+          "confidence": "measured",
+          "coverage": null,
+          "comparison": null,
+          "basis": null,
+          "sample": null,
+          "state_detail": {
+            "missing": {
+              "reason": "unwired"
+            }
+          },
+          "definition_version": 1
+        },
+        {
+          "value": null,
+          "unit": "ratio",
+          "metric": "exchange_reason_share",
+          "state": "missing",
+          "secondary_states": [],
+          "confidence": "measured",
+          "coverage": null,
+          "comparison": null,
+          "basis": null,
+          "sample": null,
+          "state_detail": {
+            "missing": {
+              "reason": "unwired"
+            }
+          },
+          "definition_version": 1
+        },
+        {
+          "value": null,
+          "unit": "count",
+          "metric": "return_requests_units",
+          "state": "missing",
+          "secondary_states": [],
+          "confidence": "measured",
+          "coverage": null,
+          "comparison": null,
+          "basis": "Yanet requests",
+          "sample": null,
+          "state_detail": {
+            "missing": {
+              "reason": "not_loaded"
+            }
+          },
+          "definition_version": 1
+        },
+        {
+          "value": null,
+          "unit": "count",
+          "metric": "exchange_requests_units",
+          "state": "missing",
+          "secondary_states": [],
+          "confidence": "measured",
+          "coverage": null,
+          "comparison": null,
+          "basis": "Yanet requests",
+          "sample": null,
+          "state_detail": {
+            "missing": {
+              "reason": "not_loaded"
+            }
+          },
+          "definition_version": 1
+        },
+        {
+          "value": null,
+          "unit": "EGP",
+          "metric": "refund_value",
+          "state": "missing",
+          "secondary_states": [],
+          "confidence": "measured",
+          "coverage": null,
+          "comparison": null,
+          "basis": null,
+          "sample": null,
+          "state_detail": {
+            "missing": {
+              "reason": "not_loaded"
+            }
+          },
+          "definition_version": 3
+        }
+      ]
+    },
+    {
+      "entity_id": "quality",
+      "attributes": {
+        "label": "Quality",
+        "applies_to": "[\"rto\",\"refund\",\"exchange\"]",
+        "owner": "manufacturing"
+      },
+      "metrics": [
+        {
+          "value": null,
+          "unit": "EGP",
+          "metric": "reversals_attributed",
+          "state": "missing",
+          "secondary_states": [],
+          "confidence": "measured",
+          "coverage": null,
+          "comparison": null,
+          "basis": null,
+          "sample": null,
+          "state_detail": {
+            "missing": {
+              "reason": "unwired"
+            }
+          },
+          "definition_version": 1
+        },
+        {
+          "value": null,
+          "unit": "ratio",
+          "metric": "rto_reason_share",
+          "state": "missing",
+          "secondary_states": [],
+          "confidence": "measured",
+          "coverage": null,
+          "comparison": null,
+          "basis": null,
+          "sample": null,
+          "state_detail": {
+            "missing": {
+              "reason": "unwired"
+            }
+          },
+          "definition_version": 1
+        },
+        {
+          "value": null,
+          "unit": "ratio",
+          "metric": "return_reason_share",
+          "state": "missing",
+          "secondary_states": [],
+          "confidence": "measured",
+          "coverage": null,
+          "comparison": null,
+          "basis": null,
+          "sample": null,
+          "state_detail": {
+            "missing": {
+              "reason": "unwired"
+            }
+          },
+          "definition_version": 1
+        },
+        {
+          "value": null,
+          "unit": "ratio",
+          "metric": "exchange_reason_share",
+          "state": "missing",
+          "secondary_states": [],
+          "confidence": "measured",
+          "coverage": null,
+          "comparison": null,
+          "basis": null,
+          "sample": null,
+          "state_detail": {
+            "missing": {
+              "reason": "unwired"
+            }
+          },
+          "definition_version": 1
+        },
+        {
+          "value": null,
+          "unit": "count",
+          "metric": "return_requests_units",
+          "state": "missing",
+          "secondary_states": [],
+          "confidence": "measured",
+          "coverage": null,
+          "comparison": null,
+          "basis": "Yanet requests",
+          "sample": null,
+          "state_detail": {
+            "missing": {
+              "reason": "not_loaded"
+            }
+          },
+          "definition_version": 1
+        },
+        {
+          "value": null,
+          "unit": "count",
+          "metric": "exchange_requests_units",
+          "state": "missing",
+          "secondary_states": [],
+          "confidence": "measured",
+          "coverage": null,
+          "comparison": null,
+          "basis": "Yanet requests",
+          "sample": null,
+          "state_detail": {
+            "missing": {
+              "reason": "not_loaded"
+            }
+          },
+          "definition_version": 1
+        },
+        {
+          "value": null,
+          "unit": "EGP",
+          "metric": "refund_value",
+          "state": "missing",
+          "secondary_states": [],
+          "confidence": "measured",
+          "coverage": null,
+          "comparison": null,
+          "basis": null,
+          "sample": null,
+          "state_detail": {
+            "missing": {
+              "reason": "not_loaded"
+            }
+          },
+          "definition_version": 3
+        }
+      ]
+    },
+    {
+      "entity_id": "unreachable",
+      "attributes": {
+        "label": "Customer unreachable",
+        "applies_to": "[\"rto\"]",
+        "owner": "address_gate"
+      },
+      "metrics": [
+        {
+          "value": null,
+          "unit": "EGP",
+          "metric": "reversals_attributed",
+          "state": "missing",
+          "secondary_states": [],
+          "confidence": "measured",
+          "coverage": null,
+          "comparison": null,
+          "basis": null,
+          "sample": null,
+          "state_detail": {
+            "missing": {
+              "reason": "unwired"
+            }
+          },
+          "definition_version": 1
+        },
+        {
+          "value": null,
+          "unit": "ratio",
+          "metric": "rto_reason_share",
+          "state": "missing",
+          "secondary_states": [],
+          "confidence": "measured",
+          "coverage": null,
+          "comparison": null,
+          "basis": null,
+          "sample": null,
+          "state_detail": {
+            "missing": {
+              "reason": "unwired"
+            }
+          },
+          "definition_version": 1
+        },
+        {
+          "value": null,
+          "unit": "ratio",
+          "metric": "return_reason_share",
+          "state": "missing",
+          "secondary_states": [],
+          "confidence": "measured",
+          "coverage": null,
+          "comparison": null,
+          "basis": null,
+          "sample": null,
+          "state_detail": {
+            "missing": {
+              "reason": "unwired"
+            }
+          },
+          "definition_version": 1
+        },
+        {
+          "value": null,
+          "unit": "ratio",
+          "metric": "exchange_reason_share",
+          "state": "missing",
+          "secondary_states": [],
+          "confidence": "measured",
+          "coverage": null,
+          "comparison": null,
+          "basis": null,
+          "sample": null,
+          "state_detail": {
+            "missing": {
+              "reason": "unwired"
+            }
+          },
+          "definition_version": 1
+        },
+        {
+          "value": null,
+          "unit": "count",
+          "metric": "return_requests_units",
+          "state": "missing",
+          "secondary_states": [],
+          "confidence": "measured",
+          "coverage": null,
+          "comparison": null,
+          "basis": "Yanet requests",
+          "sample": null,
+          "state_detail": {
+            "missing": {
+              "reason": "not_loaded"
+            }
+          },
+          "definition_version": 1
+        },
+        {
+          "value": null,
+          "unit": "count",
+          "metric": "exchange_requests_units",
+          "state": "missing",
+          "secondary_states": [],
+          "confidence": "measured",
+          "coverage": null,
+          "comparison": null,
+          "basis": "Yanet requests",
+          "sample": null,
+          "state_detail": {
+            "missing": {
+              "reason": "not_loaded"
+            }
+          },
+          "definition_version": 1
+        },
+        {
+          "value": null,
+          "unit": "EGP",
+          "metric": "refund_value",
+          "state": "missing",
+          "secondary_states": [],
+          "confidence": "measured",
+          "coverage": null,
+          "comparison": null,
+          "basis": null,
+          "sample": null,
+          "state_detail": {
+            "missing": {
+              "reason": "not_loaded"
+            }
+          },
+          "definition_version": 3
+        }
+      ]
+    },
+    {
+      "entity_id": "invalid_address",
+      "attributes": {
+        "label": "Invalid address",
+        "applies_to": "[\"rto\"]",
+        "owner": "address_gate"
+      },
+      "metrics": [
+        {
+          "value": null,
+          "unit": "EGP",
+          "metric": "reversals_attributed",
+          "state": "missing",
+          "secondary_states": [],
+          "confidence": "measured",
+          "coverage": null,
+          "comparison": null,
+          "basis": null,
+          "sample": null,
+          "state_detail": {
+            "missing": {
+              "reason": "unwired"
+            }
+          },
+          "definition_version": 1
+        },
+        {
+          "value": null,
+          "unit": "ratio",
+          "metric": "rto_reason_share",
+          "state": "missing",
+          "secondary_states": [],
+          "confidence": "measured",
+          "coverage": null,
+          "comparison": null,
+          "basis": null,
+          "sample": null,
+          "state_detail": {
+            "missing": {
+              "reason": "unwired"
+            }
+          },
+          "definition_version": 1
+        },
+        {
+          "value": null,
+          "unit": "ratio",
+          "metric": "return_reason_share",
+          "state": "missing",
+          "secondary_states": [],
+          "confidence": "measured",
+          "coverage": null,
+          "comparison": null,
+          "basis": null,
+          "sample": null,
+          "state_detail": {
+            "missing": {
+              "reason": "unwired"
+            }
+          },
+          "definition_version": 1
+        },
+        {
+          "value": null,
+          "unit": "ratio",
+          "metric": "exchange_reason_share",
+          "state": "missing",
+          "secondary_states": [],
+          "confidence": "measured",
+          "coverage": null,
+          "comparison": null,
+          "basis": null,
+          "sample": null,
+          "state_detail": {
+            "missing": {
+              "reason": "unwired"
+            }
+          },
+          "definition_version": 1
+        },
+        {
+          "value": null,
+          "unit": "count",
+          "metric": "return_requests_units",
+          "state": "missing",
+          "secondary_states": [],
+          "confidence": "measured",
+          "coverage": null,
+          "comparison": null,
+          "basis": "Yanet requests",
+          "sample": null,
+          "state_detail": {
+            "missing": {
+              "reason": "not_loaded"
+            }
+          },
+          "definition_version": 1
+        },
+        {
+          "value": null,
+          "unit": "count",
+          "metric": "exchange_requests_units",
+          "state": "missing",
+          "secondary_states": [],
+          "confidence": "measured",
+          "coverage": null,
+          "comparison": null,
+          "basis": "Yanet requests",
+          "sample": null,
+          "state_detail": {
+            "missing": {
+              "reason": "not_loaded"
+            }
+          },
+          "definition_version": 1
+        },
+        {
+          "value": null,
+          "unit": "EGP",
+          "metric": "refund_value",
+          "state": "missing",
+          "secondary_states": [],
+          "confidence": "measured",
+          "coverage": null,
+          "comparison": null,
+          "basis": null,
+          "sample": null,
+          "state_detail": {
+            "missing": {
+              "reason": "not_loaded"
+            }
+          },
+          "definition_version": 3
+        }
+      ]
+    },
+    {
+      "entity_id": "refused",
+      "attributes": {
+        "label": "Refused at door",
+        "applies_to": "[\"rto\"]",
+        "owner": "confirmation_and_offer"
+      },
+      "metrics": [
+        {
+          "value": null,
+          "unit": "EGP",
+          "metric": "reversals_attributed",
+          "state": "missing",
+          "secondary_states": [],
+          "confidence": "measured",
+          "coverage": null,
+          "comparison": null,
+          "basis": null,
+          "sample": null,
+          "state_detail": {
+            "missing": {
+              "reason": "unwired"
+            }
+          },
+          "definition_version": 1
+        },
+        {
+          "value": null,
+          "unit": "ratio",
+          "metric": "rto_reason_share",
+          "state": "missing",
+          "secondary_states": [],
+          "confidence": "measured",
+          "coverage": null,
+          "comparison": null,
+          "basis": null,
+          "sample": null,
+          "state_detail": {
+            "missing": {
+              "reason": "unwired"
+            }
+          },
+          "definition_version": 1
+        },
+        {
+          "value": null,
+          "unit": "ratio",
+          "metric": "return_reason_share",
+          "state": "missing",
+          "secondary_states": [],
+          "confidence": "measured",
+          "coverage": null,
+          "comparison": null,
+          "basis": null,
+          "sample": null,
+          "state_detail": {
+            "missing": {
+              "reason": "unwired"
+            }
+          },
+          "definition_version": 1
+        },
+        {
+          "value": null,
+          "unit": "ratio",
+          "metric": "exchange_reason_share",
+          "state": "missing",
+          "secondary_states": [],
+          "confidence": "measured",
+          "coverage": null,
+          "comparison": null,
+          "basis": null,
+          "sample": null,
+          "state_detail": {
+            "missing": {
+              "reason": "unwired"
+            }
+          },
+          "definition_version": 1
+        },
+        {
+          "value": null,
+          "unit": "count",
+          "metric": "return_requests_units",
+          "state": "missing",
+          "secondary_states": [],
+          "confidence": "measured",
+          "coverage": null,
+          "comparison": null,
+          "basis": "Yanet requests",
+          "sample": null,
+          "state_detail": {
+            "missing": {
+              "reason": "not_loaded"
+            }
+          },
+          "definition_version": 1
+        },
+        {
+          "value": null,
+          "unit": "count",
+          "metric": "exchange_requests_units",
+          "state": "missing",
+          "secondary_states": [],
+          "confidence": "measured",
+          "coverage": null,
+          "comparison": null,
+          "basis": "Yanet requests",
+          "sample": null,
+          "state_detail": {
+            "missing": {
+              "reason": "not_loaded"
+            }
+          },
+          "definition_version": 1
+        },
+        {
+          "value": null,
+          "unit": "EGP",
+          "metric": "refund_value",
+          "state": "missing",
+          "secondary_states": [],
+          "confidence": "measured",
+          "coverage": null,
+          "comparison": null,
+          "basis": null,
+          "sample": null,
+          "state_detail": {
+            "missing": {
+              "reason": "not_loaded"
+            }
+          },
+          "definition_version": 3
+        }
+      ]
+    },
+    {
+      "entity_id": "price_regret",
+      "attributes": {
+        "label": "Price regret",
+        "applies_to": "[\"rto\",\"refund\"]",
+        "owner": "confirmation_and_offer"
+      },
+      "metrics": [
+        {
+          "value": null,
+          "unit": "EGP",
+          "metric": "reversals_attributed",
+          "state": "missing",
+          "secondary_states": [],
+          "confidence": "measured",
+          "coverage": null,
+          "comparison": null,
+          "basis": null,
+          "sample": null,
+          "state_detail": {
+            "missing": {
+              "reason": "unwired"
+            }
+          },
+          "definition_version": 1
+        },
+        {
+          "value": null,
+          "unit": "ratio",
+          "metric": "rto_reason_share",
+          "state": "missing",
+          "secondary_states": [],
+          "confidence": "measured",
+          "coverage": null,
+          "comparison": null,
+          "basis": null,
+          "sample": null,
+          "state_detail": {
+            "missing": {
+              "reason": "unwired"
+            }
+          },
+          "definition_version": 1
+        },
+        {
+          "value": null,
+          "unit": "ratio",
+          "metric": "return_reason_share",
+          "state": "missing",
+          "secondary_states": [],
+          "confidence": "measured",
+          "coverage": null,
+          "comparison": null,
+          "basis": null,
+          "sample": null,
+          "state_detail": {
+            "missing": {
+              "reason": "unwired"
+            }
+          },
+          "definition_version": 1
+        },
+        {
+          "value": null,
+          "unit": "ratio",
+          "metric": "exchange_reason_share",
+          "state": "missing",
+          "secondary_states": [],
+          "confidence": "measured",
+          "coverage": null,
+          "comparison": null,
+          "basis": null,
+          "sample": null,
+          "state_detail": {
+            "missing": {
+              "reason": "unwired"
+            }
+          },
+          "definition_version": 1
+        },
+        {
+          "value": null,
+          "unit": "count",
+          "metric": "return_requests_units",
+          "state": "missing",
+          "secondary_states": [],
+          "confidence": "measured",
+          "coverage": null,
+          "comparison": null,
+          "basis": "Yanet requests",
+          "sample": null,
+          "state_detail": {
+            "missing": {
+              "reason": "not_loaded"
+            }
+          },
+          "definition_version": 1
+        },
+        {
+          "value": null,
+          "unit": "count",
+          "metric": "exchange_requests_units",
+          "state": "missing",
+          "secondary_states": [],
+          "confidence": "measured",
+          "coverage": null,
+          "comparison": null,
+          "basis": "Yanet requests",
+          "sample": null,
+          "state_detail": {
+            "missing": {
+              "reason": "not_loaded"
+            }
+          },
+          "definition_version": 1
+        },
+        {
+          "value": null,
+          "unit": "EGP",
+          "metric": "refund_value",
+          "state": "missing",
+          "secondary_states": [],
+          "confidence": "measured",
+          "coverage": null,
+          "comparison": null,
+          "basis": null,
+          "sample": null,
+          "state_detail": {
+            "missing": {
+              "reason": "not_loaded"
+            }
+          },
+          "definition_version": 3
+        }
+      ]
+    },
+    {
+      "entity_id": "delivery_failure",
+      "attributes": {
+        "label": "Delivery failure",
+        "applies_to": "[\"rto\"]",
+        "owner": "courier"
+      },
+      "metrics": [
+        {
+          "value": null,
+          "unit": "EGP",
+          "metric": "reversals_attributed",
+          "state": "missing",
+          "secondary_states": [],
+          "confidence": "measured",
+          "coverage": null,
+          "comparison": null,
+          "basis": null,
+          "sample": null,
+          "state_detail": {
+            "missing": {
+              "reason": "unwired"
+            }
+          },
+          "definition_version": 1
+        },
+        {
+          "value": null,
+          "unit": "ratio",
+          "metric": "rto_reason_share",
+          "state": "missing",
+          "secondary_states": [],
+          "confidence": "measured",
+          "coverage": null,
+          "comparison": null,
+          "basis": null,
+          "sample": null,
+          "state_detail": {
+            "missing": {
+              "reason": "unwired"
+            }
+          },
+          "definition_version": 1
+        },
+        {
+          "value": null,
+          "unit": "ratio",
+          "metric": "return_reason_share",
+          "state": "missing",
+          "secondary_states": [],
+          "confidence": "measured",
+          "coverage": null,
+          "comparison": null,
+          "basis": null,
+          "sample": null,
+          "state_detail": {
+            "missing": {
+              "reason": "unwired"
+            }
+          },
+          "definition_version": 1
+        },
+        {
+          "value": null,
+          "unit": "ratio",
+          "metric": "exchange_reason_share",
+          "state": "missing",
+          "secondary_states": [],
+          "confidence": "measured",
+          "coverage": null,
+          "comparison": null,
+          "basis": null,
+          "sample": null,
+          "state_detail": {
+            "missing": {
+              "reason": "unwired"
+            }
+          },
+          "definition_version": 1
+        },
+        {
+          "value": null,
+          "unit": "count",
+          "metric": "return_requests_units",
+          "state": "missing",
+          "secondary_states": [],
+          "confidence": "measured",
+          "coverage": null,
+          "comparison": null,
+          "basis": "Yanet requests",
+          "sample": null,
+          "state_detail": {
+            "missing": {
+              "reason": "not_loaded"
+            }
+          },
+          "definition_version": 1
+        },
+        {
+          "value": null,
+          "unit": "count",
+          "metric": "exchange_requests_units",
+          "state": "missing",
+          "secondary_states": [],
+          "confidence": "measured",
+          "coverage": null,
+          "comparison": null,
+          "basis": "Yanet requests",
+          "sample": null,
+          "state_detail": {
+            "missing": {
+              "reason": "not_loaded"
+            }
+          },
+          "definition_version": 1
+        },
+        {
+          "value": null,
+          "unit": "EGP",
+          "metric": "refund_value",
+          "state": "missing",
+          "secondary_states": [],
+          "confidence": "measured",
+          "coverage": null,
+          "comparison": null,
+          "basis": null,
+          "sample": null,
+          "state_detail": {
+            "missing": {
+              "reason": "not_loaded"
+            }
+          },
+          "definition_version": 3
+        }
+      ]
+    },
+    {
+      "entity_id": "other",
+      "attributes": {
+        "label": "Other (stated)",
+        "applies_to": "[\"rto\",\"refund\",\"exchange\"]",
+        "owner": null
+      },
+      "metrics": [
+        {
+          "value": null,
+          "unit": "EGP",
+          "metric": "reversals_attributed",
+          "state": "missing",
+          "secondary_states": [],
+          "confidence": "measured",
+          "coverage": null,
+          "comparison": null,
+          "basis": null,
+          "sample": null,
+          "state_detail": {
+            "missing": {
+              "reason": "unwired"
+            }
+          },
+          "definition_version": 1
+        },
+        {
+          "value": null,
+          "unit": "ratio",
+          "metric": "rto_reason_share",
+          "state": "missing",
+          "secondary_states": [],
+          "confidence": "measured",
+          "coverage": null,
+          "comparison": null,
+          "basis": null,
+          "sample": null,
+          "state_detail": {
+            "missing": {
+              "reason": "unwired"
+            }
+          },
+          "definition_version": 1
+        },
+        {
+          "value": null,
+          "unit": "ratio",
+          "metric": "return_reason_share",
+          "state": "missing",
+          "secondary_states": [],
+          "confidence": "measured",
+          "coverage": null,
+          "comparison": null,
+          "basis": null,
+          "sample": null,
+          "state_detail": {
+            "missing": {
+              "reason": "unwired"
+            }
+          },
+          "definition_version": 1
+        },
+        {
+          "value": null,
+          "unit": "ratio",
+          "metric": "exchange_reason_share",
+          "state": "missing",
+          "secondary_states": [],
+          "confidence": "measured",
+          "coverage": null,
+          "comparison": null,
+          "basis": null,
+          "sample": null,
+          "state_detail": {
+            "missing": {
+              "reason": "unwired"
+            }
+          },
+          "definition_version": 1
+        },
+        {
+          "value": null,
+          "unit": "count",
+          "metric": "return_requests_units",
+          "state": "missing",
+          "secondary_states": [],
+          "confidence": "measured",
+          "coverage": null,
+          "comparison": null,
+          "basis": "Yanet requests",
+          "sample": null,
+          "state_detail": {
+            "missing": {
+              "reason": "not_loaded"
+            }
+          },
+          "definition_version": 1
+        },
+        {
+          "value": null,
+          "unit": "count",
+          "metric": "exchange_requests_units",
+          "state": "missing",
+          "secondary_states": [],
+          "confidence": "measured",
+          "coverage": null,
+          "comparison": null,
+          "basis": "Yanet requests",
+          "sample": null,
+          "state_detail": {
+            "missing": {
+              "reason": "not_loaded"
+            }
+          },
+          "definition_version": 1
+        },
+        {
+          "value": null,
+          "unit": "EGP",
+          "metric": "refund_value",
+          "state": "missing",
+          "secondary_states": [],
+          "confidence": "measured",
+          "coverage": null,
+          "comparison": null,
+          "basis": null,
+          "sample": null,
+          "state_detail": {
+            "missing": {
+              "reason": "not_loaded"
+            }
+          },
+          "definition_version": 3
+        }
+      ]
+    },
+    {
+      "entity_id": "unclassified",
+      "attributes": {
+        "label": "No usable reason",
+        "applies_to": "[\"rto\",\"refund\",\"exchange\"]",
+        "owner": null
+      },
+      "metrics": [
+        {
+          "value": null,
+          "unit": "EGP",
+          "metric": "reversals_attributed",
+          "state": "missing",
+          "secondary_states": [],
+          "confidence": "measured",
+          "coverage": null,
+          "comparison": null,
+          "basis": null,
+          "sample": null,
+          "state_detail": {
+            "missing": {
+              "reason": "unwired"
+            }
+          },
+          "definition_version": 1
+        },
+        {
+          "value": null,
+          "unit": "ratio",
+          "metric": "rto_reason_share",
+          "state": "missing",
+          "secondary_states": [],
+          "confidence": "measured",
+          "coverage": null,
+          "comparison": null,
+          "basis": null,
+          "sample": null,
+          "state_detail": {
+            "missing": {
+              "reason": "unwired"
+            }
+          },
+          "definition_version": 1
+        },
+        {
+          "value": null,
+          "unit": "ratio",
+          "metric": "return_reason_share",
+          "state": "missing",
+          "secondary_states": [],
+          "confidence": "measured",
+          "coverage": null,
+          "comparison": null,
+          "basis": null,
+          "sample": null,
+          "state_detail": {
+            "missing": {
+              "reason": "unwired"
+            }
+          },
+          "definition_version": 1
+        },
+        {
+          "value": null,
+          "unit": "ratio",
+          "metric": "exchange_reason_share",
+          "state": "missing",
+          "secondary_states": [],
+          "confidence": "measured",
+          "coverage": null,
+          "comparison": null,
+          "basis": null,
+          "sample": null,
+          "state_detail": {
+            "missing": {
+              "reason": "unwired"
+            }
+          },
+          "definition_version": 1
+        },
+        {
+          "value": null,
+          "unit": "count",
+          "metric": "return_requests_units",
+          "state": "missing",
+          "secondary_states": [],
+          "confidence": "measured",
+          "coverage": null,
+          "comparison": null,
+          "basis": "Yanet requests",
+          "sample": null,
+          "state_detail": {
+            "missing": {
+              "reason": "not_loaded"
+            }
+          },
+          "definition_version": 1
+        },
+        {
+          "value": null,
+          "unit": "count",
+          "metric": "exchange_requests_units",
+          "state": "missing",
+          "secondary_states": [],
+          "confidence": "measured",
+          "coverage": null,
+          "comparison": null,
+          "basis": "Yanet requests",
+          "sample": null,
+          "state_detail": {
+            "missing": {
+              "reason": "not_loaded"
+            }
+          },
+          "definition_version": 1
+        },
+        {
+          "value": null,
+          "unit": "EGP",
+          "metric": "refund_value",
+          "state": "missing",
+          "secondary_states": [],
+          "confidence": "measured",
+          "coverage": null,
+          "comparison": null,
+          "basis": null,
+          "sample": null,
+          "state_detail": {
+            "missing": {
+              "reason": "not_loaded"
+            }
+          },
+          "definition_version": 3
+        }
+      ]
+    },
+    {
+      "entity_id": "disliked_item",
+      "attributes": {
+        "label": "Didn't like the item",
+        "applies_to": "[\"refund\",\"exchange\"]",
+        "owner": "product_content"
+      },
+      "metrics": [
+        {
+          "value": null,
+          "unit": "EGP",
+          "metric": "reversals_attributed",
+          "state": "missing",
+          "secondary_states": [],
+          "confidence": "measured",
+          "coverage": null,
+          "comparison": null,
+          "basis": null,
+          "sample": null,
+          "state_detail": {
+            "missing": {
+              "reason": "unwired"
+            }
+          },
+          "definition_version": 1
+        },
+        {
+          "value": null,
+          "unit": "ratio",
+          "metric": "rto_reason_share",
+          "state": "missing",
+          "secondary_states": [],
+          "confidence": "measured",
+          "coverage": null,
+          "comparison": null,
+          "basis": null,
+          "sample": null,
+          "state_detail": {
+            "missing": {
+              "reason": "unwired"
+            }
+          },
+          "definition_version": 1
+        },
+        {
+          "value": null,
+          "unit": "ratio",
+          "metric": "return_reason_share",
+          "state": "missing",
+          "secondary_states": [],
+          "confidence": "measured",
+          "coverage": null,
+          "comparison": null,
+          "basis": null,
+          "sample": null,
+          "state_detail": {
+            "missing": {
+              "reason": "unwired"
+            }
+          },
+          "definition_version": 1
+        },
+        {
+          "value": null,
+          "unit": "ratio",
+          "metric": "exchange_reason_share",
+          "state": "missing",
+          "secondary_states": [],
+          "confidence": "measured",
+          "coverage": null,
+          "comparison": null,
+          "basis": null,
+          "sample": null,
+          "state_detail": {
+            "missing": {
+              "reason": "unwired"
+            }
+          },
+          "definition_version": 1
+        },
+        {
+          "value": null,
+          "unit": "count",
+          "metric": "return_requests_units",
+          "state": "missing",
+          "secondary_states": [],
+          "confidence": "measured",
+          "coverage": null,
+          "comparison": null,
+          "basis": "Yanet requests",
+          "sample": null,
+          "state_detail": {
+            "missing": {
+              "reason": "not_loaded"
+            }
+          },
+          "definition_version": 1
+        },
+        {
+          "value": null,
+          "unit": "count",
+          "metric": "exchange_requests_units",
+          "state": "missing",
+          "secondary_states": [],
+          "confidence": "measured",
+          "coverage": null,
+          "comparison": null,
+          "basis": "Yanet requests",
+          "sample": null,
+          "state_detail": {
+            "missing": {
+              "reason": "not_loaded"
+            }
+          },
+          "definition_version": 1
+        },
+        {
+          "value": null,
+          "unit": "EGP",
+          "metric": "refund_value",
+          "state": "missing",
+          "secondary_states": [],
+          "confidence": "measured",
+          "coverage": null,
+          "comparison": null,
+          "basis": null,
+          "sample": null,
+          "state_detail": {
+            "missing": {
+              "reason": "not_loaded"
+            }
+          },
+          "definition_version": 3
+        }
+      ]
+    },
+    {
+      "entity_id": "wrong_item_received",
+      "attributes": {
+        "label": "Wrong item or size received",
+        "applies_to": "[\"refund\",\"exchange\"]",
+        "owner": "fulfilment"
+      },
+      "metrics": [
+        {
+          "value": null,
+          "unit": "EGP",
+          "metric": "reversals_attributed",
+          "state": "missing",
+          "secondary_states": [],
+          "confidence": "measured",
+          "coverage": null,
+          "comparison": null,
+          "basis": null,
+          "sample": null,
+          "state_detail": {
+            "missing": {
+              "reason": "unwired"
+            }
+          },
+          "definition_version": 1
+        },
+        {
+          "value": null,
+          "unit": "ratio",
+          "metric": "rto_reason_share",
+          "state": "missing",
+          "secondary_states": [],
+          "confidence": "measured",
+          "coverage": null,
+          "comparison": null,
+          "basis": null,
+          "sample": null,
+          "state_detail": {
+            "missing": {
+              "reason": "unwired"
+            }
+          },
+          "definition_version": 1
+        },
+        {
+          "value": null,
+          "unit": "ratio",
+          "metric": "return_reason_share",
+          "state": "missing",
+          "secondary_states": [],
+          "confidence": "measured",
+          "coverage": null,
+          "comparison": null,
+          "basis": null,
+          "sample": null,
+          "state_detail": {
+            "missing": {
+              "reason": "unwired"
+            }
+          },
+          "definition_version": 1
+        },
+        {
+          "value": null,
+          "unit": "ratio",
+          "metric": "exchange_reason_share",
+          "state": "missing",
+          "secondary_states": [],
+          "confidence": "measured",
+          "coverage": null,
+          "comparison": null,
+          "basis": null,
+          "sample": null,
+          "state_detail": {
+            "missing": {
+              "reason": "unwired"
+            }
+          },
+          "definition_version": 1
+        },
+        {
+          "value": null,
+          "unit": "count",
+          "metric": "return_requests_units",
+          "state": "missing",
+          "secondary_states": [],
+          "confidence": "measured",
+          "coverage": null,
+          "comparison": null,
+          "basis": "Yanet requests",
+          "sample": null,
+          "state_detail": {
+            "missing": {
+              "reason": "not_loaded"
+            }
+          },
+          "definition_version": 1
+        },
+        {
+          "value": null,
+          "unit": "count",
+          "metric": "exchange_requests_units",
+          "state": "missing",
+          "secondary_states": [],
+          "confidence": "measured",
+          "coverage": null,
+          "comparison": null,
+          "basis": "Yanet requests",
+          "sample": null,
+          "state_detail": {
+            "missing": {
+              "reason": "not_loaded"
+            }
+          },
+          "definition_version": 1
+        },
+        {
+          "value": null,
+          "unit": "EGP",
+          "metric": "refund_value",
+          "state": "missing",
+          "secondary_states": [],
+          "confidence": "measured",
+          "coverage": null,
+          "comparison": null,
+          "basis": null,
+          "sample": null,
+          "state_detail": {
+            "missing": {
+              "reason": "not_loaded"
+            }
+          },
+          "definition_version": 3
+        }
+      ]
+    }
+  ],
+  "row_source": {
+    "state": "ok",
+    "source": "table",
+    "source_table": "dim_reason"
+  },
+  "paging": {
+    "limit": 100,
+    "offset": 0,
+    "returned": 11,
+    "has_more": false
+  },
+  "meta": {
+    "generated_at": "2000-01-09T06:00:00.000Z",
+    "definitions": {
+      "exchange_reason_share": {
+        "label": "Exchange reason share",
+        "surface": "post_purchase",
+        "unit": "ratio",
+        "confidence": "measured",
+        "formula": "exchanges with the reason ÷ exchanges",
+        "session_basis": null,
+        "basis_label": null,
+        "direction": "neutral",
+        "comparison_mode": "none",
+        "treatment": null,
+        "version": 1,
+        "effective_from": "1970-01-01"
+      },
+      "exchange_requests_units": {
+        "label": "Units asked to exchange",
+        "surface": "post_purchase",
+        "unit": "count",
+        "confidence": "measured",
+        "formula": "units on Yanet exchange requests, counted against the week the order was placed",
+        "session_basis": null,
+        "basis_label": "Yanet requests",
+        "direction": "lower_better",
+        "comparison_mode": "drop_day",
+        "treatment": "Requests arrive 1-9 days after the order (measured over the first export: 94% within 7 days), so a week is only fully readable 14 days after it ends; coverage states the settled share. Orders placed before the first uploaded request file have no request data at all and read missing, never 0.",
+        "version": 1,
+        "effective_from": "1970-01-02"
+      },
+      "refund_value": {
+        "label": "Refunds",
+        "surface": "post_purchase",
+        "unit": "EGP",
+        "confidence": "measured",
+        "formula": "Σ Shopify refunded amounts + Σ (goods value − return shipping fee − restocking fee) on approved Yanet returns, by the order's week",
+        "session_basis": null,
+        "basis_label": null,
+        "direction": "lower_better",
+        "comparison_mode": "drop_day",
+        "treatment": "The cash the customer actually receives, which is what the courier's remittance is short by. The fees are withheld from the refund, not paid by the business. Two channels, never double-counted: Shopify's own refunds, and approved Yanet returns the courier pays back.",
+        "version": 3,
+        "effective_from": "1970-01-03"
+      },
+      "return_reason_share": {
+        "label": "Return reason share",
+        "surface": "post_purchase",
+        "unit": "ratio",
+        "confidence": "measured",
+        "formula": "refund value with the reason ÷ refund value",
+        "session_basis": null,
+        "basis_label": null,
+        "direction": "neutral",
+        "comparison_mode": "none",
+        "treatment": null,
+        "version": 1,
+        "effective_from": "1970-01-01"
+      },
+      "return_requests_units": {
+        "label": "Units asked to return",
+        "surface": "post_purchase",
+        "unit": "count",
+        "confidence": "measured",
+        "formula": "units on Yanet return requests, counted against the week the order was placed",
+        "session_basis": null,
+        "basis_label": "Yanet requests",
+        "direction": "lower_better",
+        "comparison_mode": "drop_day",
+        "treatment": "Requests arrive 1-9 days after the order (measured over the first export: 94% within 7 days), so a week is only fully readable 14 days after it ends; coverage states the settled share. Orders placed before the first uploaded request file have no request data at all and read missing, never 0.",
+        "version": 1,
+        "effective_from": "1970-01-02"
+      },
+      "reversals_attributed": {
+        "label": "Reversals (order week)",
+        "surface": "economics",
+        "unit": "EGP",
+        "confidence": "measured",
+        "formula": "Σ fact_reversal.value by order_week",
+        "session_basis": null,
+        "basis_label": null,
+        "direction": "lower_better",
+        "comparison_mode": "drop_day",
+        "treatment": "Right-censored: recent order weeks gain reversals as late cancellations arrive; coverage states the resolved share.",
+        "version": 1,
+        "effective_from": "1970-01-01"
+      },
+      "rto_reason_share": {
+        "label": "RTO reason share",
+        "surface": "post_purchase",
+        "unit": "ratio",
+        "confidence": "measured",
+        "formula": "reversal value with the reason ÷ reversal value",
+        "session_basis": null,
+        "basis_label": null,
+        "direction": "neutral",
+        "comparison_mode": "none",
+        "treatment": null,
+        "version": 1,
+        "effective_from": "1970-01-01"
+      }
+    },
+    "sources": {},
+    "unwired": [
+      "exchange_reason_share",
+      "return_reason_share",
+      "reversals_attributed",
+      "rto_reason_share"
+    ],
+    "envelopes": {
+      "total": 77,
+      "by_state": {
+        "missing": 77
+      }
+    },
+    "warnings": [],
+    "reads": {
+      "d1_batches": 1,
+      "statements": 5
+    }
+  }
+}

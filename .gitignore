@@ -1,0 +1,7 @@
+.dev.vars
+.dev.vars.*
+.wrangler/
+node_modules/
+*.local
+secrets.json
+*.pem
